@@ -2,7 +2,7 @@ package db
 
 import (
 	"dhis2gw/config"
-
+	log "github.com/sirupsen/logrus"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //import postgres
