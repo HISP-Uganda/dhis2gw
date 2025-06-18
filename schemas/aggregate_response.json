@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DHIS2 Aggregate Data Submission Response",
+  "type": "object",
+  "required": ["status", "importCount"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["SUCCESS", "WARNING", "ERROR"],
+      "description": "Overall status of the submission"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional textual description"
+    },
+    "importCount": {
+      "type": "object",
+      "required": ["imported", "updated", "ignored", "deleted"],
+      "properties": {
+        "imported": { "type": "integer", "minimum": 0 },
+        "updated": { "type": "integer", "minimum": 0 },
+        "ignored": { "type": "integer", "minimum": 0 },
+        "deleted": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "List of conflicts if any data values could not be imported",
+      "items": {
+        "type": "object",
+        "required": ["object", "value"],
+        "properties": {
+          "object": { "type": "string", "description": "The object identifier or type" },
+          "value": { "type": "string", "description": "Description of the conflict or error" }
+        }
+      }
+    },
+    "httpStatus": {
+      "type": "string",
+      "description": "HTTP status text (e.g. 'OK')"
+    },
+    "httpStatusCode": {
+      "type": "integer",
+      "description": "HTTP status code (e.g. 200, 409)"
+    },
+    "responseType": {
+      "type": "string",
+      "description": "Type of response (e.g. 'ImportSummary', 'ImportReport')"
+    }
+  },
+  "additionalProperties": false
+}

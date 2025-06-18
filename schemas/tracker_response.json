@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DHIS2 Tracker Import Response",
+  "type": "object",
+  "required": ["status", "responseType", "stats"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["OK", "WARNING", "ERROR"],
+      "description": "Overall status of the import operation"
+    },
+    "message": {
+      "type": "string",
+      "description": "Optional message describing outcome"
+    },
+    "responseType": {
+      "type": "string",
+      "enum": ["ImportReport"],
+      "description": "Response type identifier"
+    },
+    "stats": {
+      "type": "object",
+      "required": ["created", "updated", "deleted", "ignored"],
+      "properties": {
+        "created": { "type": "integer", "minimum": 0 },
+        "updated": { "type": "integer", "minimum": 0 },
+        "deleted": { "type": "integer", "minimum": 0 },
+        "ignored": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "trackerImportSummaries": {
+      "type": "object",
+      "properties": {
+        "trackedEntities": { "$ref": "#/definitions/domainSummary" },
+        "enrollments": { "$ref": "#/definitions/domainSummary" },
+        "events": { "$ref": "#/definitions/domainSummary" },
+        "relationships": { "$ref": "#/definitions/domainSummary" }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["object", "value"],
+        "properties": {
+          "object": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      }
+    },
+    "imported": {
+      "type": "boolean",
+      "description": "True if any item was successfully imported"
+    }
+  },
+  "definitions": {
+    "domainSummary": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["SUCCESS", "WARNING", "ERROR"]
+        },
+        "imported": { "type": "integer" },
+        "updated": { "type": "integer" },
+        "deleted": { "type": "integer" },
+        "ignored": { "type": "integer" },
+        "importSummaries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["status", "reference"],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["SUCCESS", "ERROR", "WARNING"]
+              },
+              "reference": {
+                "type": "string",
+                "description": "UID of the tracked entity, event, etc."
+              },
+              "conflicts": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["object", "value"],
+                  "properties": {
+                    "object": { "type": "string" },
+                    "value": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

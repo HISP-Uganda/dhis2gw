@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DHIS2 Tracker Import Payload (Extended)",
+  "type": "object",
+  "properties": {
+    "importStrategy": {
+      "type": "string",
+      "enum": ["CREATE", "UPDATE", "CREATE_AND_UPDATE", "DELETE"],
+      "description": "Strategy for importing the data"
+    },
+    "atomicMode": {
+      "type": "string",
+      "enum": ["ALL", "OBJECT"],
+      "description": "Whether to treat import as atomic for all or per object"
+    },
+    "flushMode": {
+      "type": "string",
+      "enum": ["AUTO", "OBJECT"],
+      "description": "Control how often the persistence context is flushed"
+    },
+    "validationMode": {
+      "type": "string",
+      "enum": ["FULL", "SKIP"],
+      "description": "Whether to run full server-side validation"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "description": "If true, validates only without persisting"
+    },
+    "skipTextValidation": {
+      "type": "boolean",
+      "description": "If true, disables validation of text-based fields"
+    },
+    "trackedEntities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["trackedEntity", "orgUnit", "trackedEntityType"],
+        "properties": {
+          "trackedEntity": { "type": "string" },
+          "trackedEntityType": { "type": "string" },
+          "orgUnit": { "type": "string" },
+          "inactive": { "type": "boolean" },
+          "deleted": { "type": "boolean" },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["attribute", "value"],
+              "properties": {
+                "attribute": { "type": "string" },
+                "value": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "enrollments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["enrollment", "trackedEntity", "orgUnit", "program", "enrollmentDate"],
+        "properties": {
+          "enrollment": { "type": "string" },
+          "trackedEntity": { "type": "string" },
+          "orgUnit": { "type": "string" },
+          "program": { "type": "string" },
+          "enrollmentDate": { "type": "string", "format": "date" },
+          "incidentDate": { "type": "string", "format": "date" },
+          "status": {
+            "type": "string",
+            "enum": ["ACTIVE", "COMPLETED", "CANCELLED"]
+          },
+          "deleted": { "type": "boolean" },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/event" }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/event" }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relationshipType", "from", "to"],
+        "properties": {
+          "relationship": { "type": "string" },
+          "relationshipType": { "type": "string" },
+          "deleted": { "type": "boolean" },
+          "from": {
+            "type": "object",
+            "properties": {
+              "trackedEntity": { "type": "string" },
+              "enrollment": { "type": "string" },
+              "event": { "type": "string" }
+            },
+            "minProperties": 1
+          },
+          "to": {
+            "type": "object",
+            "properties": {
+              "trackedEntity": { "type": "string" },
+              "enrollment": { "type": "string" },
+              "event": { "type": "string" }
+            },
+            "minProperties": 1
+          }
+        }
+      }
+    }
+  },
+  "required": [],
+  "additionalProperties": false,
+  "definitions": {
+    "event": {
+      "type": "object",
+      "required": ["event", "program", "programStage", "orgUnit", "eventDate"],
+      "properties": {
+        "event": { "type": "string" },
+        "program": { "type": "string" },
+        "programStage": { "type": "string" },
+        "orgUnit": { "type": "string" },
+        "trackedEntity": { "type": "string" },
+        "enrollment": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["ACTIVE", "COMPLETED", "SCHEDULE", "VISITED", "OVERDUE", "SKIPPED"]
+        },
+        "eventDate": { "type": "string", "format": "date" },
+        "dueDate": { "type": "string", "format": "date" },
+        "deleted": { "type": "boolean" },
+        "dataValues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["dataElement", "value"],
+            "properties": {
+              "dataElement": { "type": "string" },
+              "value": { "type": "string" }
+            }
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "note": { "type": "string" },
+              "storedBy": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
