@@ -5,7 +5,10 @@ import (
 	"dhis2gw/config"
 	"dhis2gw/controllers"
 	"dhis2gw/db"
+	"dhis2gw/middleware"
+	"dhis2gw/tasks"
 	"fmt"
+	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/gin-gonic/gin"
 	"html/template"
 
@@ -46,10 +49,17 @@ func main() {
 		_ = client.Close()
 	}(client)
 
+	dhis2Client := sdk.NewClient(
+		config.DHIS2GWConf.API.DHIS2GWBaseURL,
+		config.DHIS2GWConf.API.DHIS2GWDHIS2User,
+		config.DHIS2GWConf.API.DHIS2GWDHIS2Password)
+	tasks.SetClient(dhis2Client)
+
 	var wg sync.WaitGroup
 
-	wg.Add(1)
+	wg.Add(2)
 	go startAPIServer(&wg)
+	go startWorker(&wg)
 
 	wg.Wait()
 }
@@ -73,7 +83,7 @@ func startAPIServer(wg *sync.WaitGroup) {
 	// Serve Static Files
 	router.Static("/static", config.DHIS2GWConf.Server.StaticDirectory)
 
-	v2 := router.Group("/api", BasicAuth())
+	v2 := router.Group("/api", middleware.BasicAuth(db.GetDB(), client))
 	{
 		v2.GET("/test2", func(c *gin.Context) {
 			c.String(200, "Authorized")
@@ -98,4 +108,26 @@ func startAPIServer(wg *sync.WaitGroup) {
 		log.Fatalf("Could not start GIN server: %v", err)
 	}
 
+}
+
+func startWorker(wg *sync.WaitGroup) {
+	defer wg.Done()
+	srv := asynq.NewServer(
+		asynq.RedisClientOpt{Addr: config.DHIS2GWConf.Server.RedisAddress},
+		asynq.Config{
+			Concurrency: config.DHIS2GWConf.Server.MaxConcurrent,
+			Queues: map[string]int{
+				"critical": 6,
+				"default":  3,
+				"low":      1,
+			},
+		},
+	)
+
+	mux := asynq.NewServeMux()
+	mux.HandleFunc(tasks.TypeAggregate, tasks.HandleAggregateTask)
+
+	if err := srv.Run(mux); err != nil {
+		log.Fatalf("could not run asynq worker: %v", err)
+	}
 }

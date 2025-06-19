@@ -3,7 +3,7 @@
 all: dhis2gw worker
 
 clean:
-	rm -f rtcgw-go workers/workers
+	rm -f dhis2gw workers/workers
 
 dhis2gw:
 	go build -ldflags="-s -w" -o dhis2gw

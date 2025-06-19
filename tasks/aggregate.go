@@ -2,14 +2,25 @@ package tasks
 
 import (
 	"context"
+	"dhis2gw/db"
+	"dhis2gw/joblog"
 	"dhis2gw/models"
+	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/goccy/go-json"
 	"github.com/hibiken/asynq"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
 	TypeAggregate = "aggregate:send"
 )
+
+var dhis2Client *sdk.Client
+
+// SetClient should be called from main.go after initializing the client.
+func SetClient(client *sdk.Client) {
+	dhis2Client = client
+}
 
 type AggregateTaskPayload struct {
 	LogID   int64 `json:"log_id"`
@@ -32,20 +43,45 @@ func HandleAggregateTask(ctx context.Context, task *asynq.Task) error {
 	}
 
 	// Process the aggregate request
-	// log job in DB
-	if err := aggRequest.Process(); err != nil {
+	if err := aggRequest.Process(ctx); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *AggregateTaskPayload) Process() error {
-	// Here you would implement the logic to process the aggregate request
-	// For example, sending data to DHIS2 or performing some aggregation logic
+func (p *AggregateTaskPayload) Process(ctx context.Context) error {
 
-	// This is a placeholder for actual processing logic
-	// You can replace this with your own implementation
-	// return p.Payload.SendToDHIS2()
+	payload := p.Payload.ToDHIS2AggregatePayload()
+
+	jl, err := joblog.Load(db.GetDB(), p.LogID)
+	if err == nil && jl.RetryCount > 0 {
+		_ = jl.IncrementRetry()
+	}
+
+	resp, err := dhis2Client.SendAggregateDataValues(ctx, &payload)
+	status := "success"
+	dhis2Resp := ""
+	if err != nil {
+		log.Error("Error sending aggregate data values to DHIS2: ", err)
+		status = "failed"
+		dhis2Resp = err.Error()
+	} else {
+		log.Info("Successfully sent aggregate data values to DHIS2")
+		status = resp.Status
+		rp, err := json.Marshal(resp)
+		if err != nil {
+			log.Error("Error marshalling DHIS2 response: ", err)
+			status = "failed"
+			dhis2Resp = err.Error()
+		} else {
+			dhis2Resp = string(rp)
+		}
+	}
+	if jl != nil {
+		_ = jl.UpdateStatusAndResponse(status, dhis2Resp)
+	}
+	log.WithFields(log.Fields{"ImportResponse": resp}).Info("Aggregate Import Response")
+
 	return nil
 }
