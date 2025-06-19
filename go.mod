@@ -3,7 +3,7 @@ module dhis2gw
 go 1.23.9
 
 require (
-	github.com/HISP-Uganda/go-dhis2-sdk v1.0.0
+	github.com/HISP-Uganda/go-dhis2-sdk v1.0.1
 	github.com/buger/jsonparser v1.1.1
 	github.com/evanphx/json-patch v0.5.2
 	github.com/fsnotify/fsnotify v1.9.0
@@ -20,7 +20,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/twpayne/go-geom v1.6.1
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.39.0
 )
 
 require (
@@ -56,14 +56,14 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
-	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/net v0.41.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/text v0.26.0 // indirect
 	golang.org/x/time v0.8.0 // indirect
 	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

@@ -1,6 +1,10 @@
 # app build output
 dhis2gw
 workers/workers
+cmd/api/dhis2gw-api
+cmd/api/api
+cmd/worker/dhis2gw-worker
+cmd/worker/worker
 
 # cross-compiled binaries
 dist/

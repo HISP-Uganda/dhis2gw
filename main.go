@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"dhis2gw/cmd"
 	"dhis2gw/config"
 	"dhis2gw/controllers"
@@ -11,6 +12,9 @@ import (
 	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/gin-gonic/gin"
 	"html/template"
+	"net/http"
+	"os/signal"
+	"syscall"
 
 	"github.com/hibiken/asynq"
 	log "github.com/sirupsen/logrus"
@@ -37,6 +41,8 @@ var splash = `
 var client *asynq.Client
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
 		if err := cmd.RunMigrations(db.GetDB()); err != nil {
 			log.Fatalf("Migration failed: %v", err)
@@ -58,29 +64,25 @@ func main() {
 	var wg sync.WaitGroup
 
 	wg.Add(2)
-	go startAPIServer(&wg)
-	go startWorker(&wg)
+	go startAPIServer(ctx, &wg)
+	go startWorker(ctx, &wg)
 
 	wg.Wait()
 }
 
-func startAPIServer(wg *sync.WaitGroup) {
+func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	router := gin.Default()
 
-	// Define template functions
 	funcMap := template.FuncMap{
 		"safeHTML": func(s string) template.HTML {
-			return template.HTML(s) // Mark string as safe HTML
+			return template.HTML(s)
 		},
 	}
-	// Load templates with custom functions
 	tmpl := template.Must(template.New("").Funcs(funcMap).ParseGlob(
 		config.DHIS2GWConf.Server.TemplatesDirectory + "/*"))
 	router.SetHTMLTemplate(tmpl)
-
-	// Serve Static Files
 	router.Static("/static", config.DHIS2GWConf.Server.StaticDirectory)
 
 	v2 := router.Group("/api", middleware.BasicAuth(db.GetDB(), client))
@@ -99,19 +101,43 @@ func startAPIServer(wg *sync.WaitGroup) {
 		aggregateController := &controllers.AggregateController{}
 		v2.POST("/aggregate", aggregateController.CreateRequest)
 	}
-	// Handle error response when a route is not defined
 	router.NoRoute(func(c *gin.Context) {
 		c.String(404, "Page Not Found!")
 	})
 
-	if err := router.Run(":" + fmt.Sprintf("%s", config.DHIS2GWConf.Server.Port)); err != nil {
-		log.Fatalf("Could not start GIN server: %v", err)
+	// Use http.Server for graceful shutdown
+	httpServer := &http.Server{
+		Addr:    ":" + fmt.Sprintf("%s", config.DHIS2GWConf.Server.Port),
+		Handler: router,
 	}
 
+	// Start the server in a goroutine
+	errCh := make(chan error, 1)
+	go func() {
+		log.Infof("Starting API server on :%s...", config.DHIS2GWConf.Server.Port)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Info("Shutdown signal received. Shutting down API server...")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			log.Errorf("Error shutting down API server: %v", err)
+		} else {
+			log.Info("API server shut down gracefully.")
+		}
+	case err := <-errCh:
+		log.Fatalf("API server error: %v", err)
+	}
 }
 
-func startWorker(wg *sync.WaitGroup) {
+func startWorker(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: config.DHIS2GWConf.Server.RedisAddress},
 		asynq.Config{
@@ -127,7 +153,20 @@ func startWorker(wg *sync.WaitGroup) {
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(tasks.TypeAggregate, tasks.HandleAggregateTask)
 
-	if err := srv.Run(mux); err != nil {
-		log.Fatalf("could not run asynq worker: %v", err)
+	// Run the worker in a goroutine and listen for shutdown
+	errCh := make(chan error, 1)
+	go func() {
+		if err := srv.Run(mux); err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Info("Shutdown signal received. Shutting down Asynq worker...")
+		srv.Shutdown() // No error to check in current Asynq
+		log.Info("Asynq worker shut down gracefully.")
+	case err := <-errCh:
+		log.Fatalf("Asynq worker error: %v", err)
 	}
 }
