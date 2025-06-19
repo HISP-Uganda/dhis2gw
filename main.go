@@ -56,7 +56,7 @@ func main() {
 	}(client)
 
 	dhis2Client := sdk.NewClient(
-		config.DHIS2GWConf.API.DHIS2GWBaseURL,
+		config.DHIS2GWConf.API.DHIS2GWDHIS2BaseURL,
 		config.DHIS2GWConf.API.DHIS2GWDHIS2User,
 		config.DHIS2GWConf.API.DHIS2GWDHIS2Password)
 	tasks.SetClient(dhis2Client)

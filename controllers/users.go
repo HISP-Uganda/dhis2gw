@@ -21,7 +21,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		Password    string `json:"password"`
 		FirstName   string `json:"firstName"`
 		LastName    string `json:"lastName"`
-		Email       string `json:email`
+		Email       string `json:"email"`
 		Telephone   string `json:"telephone"`
 		IsActive    bool   `json:"isActive"`
 		IsAdminUser bool   `json:"isAdminUser,omitempty"`
