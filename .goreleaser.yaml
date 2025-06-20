@@ -26,6 +26,8 @@ archives:
       - docs/templates/**/*
       - docs/**/*.json
       - docs/**/*.yaml
+    exclude:
+      - docs/**/*.go
 checksum:
   name_template: 'checksums.txt'
 snapshot:
