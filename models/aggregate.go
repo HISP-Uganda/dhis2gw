@@ -1,6 +1,7 @@
 package models
 
 import (
+	"dhis2gw/config"
 	"fmt"
 	"github.com/HISP-Uganda/go-dhis2-sdk/aggregate"
 	"github.com/HISP-Uganda/go-dhis2-sdk/dhis2/schema"
@@ -30,7 +31,7 @@ func (r *AggregateRequest) ToDHIS2AggregatePayload() aggregate.DataValueSetPaylo
 
 func ConvertDataValuesToDHIS2DataValues(requestDataValues map[string]any) []schema.DataValue {
 	dv := []schema.DataValue{}
-	codedMapping, err := GetDhis2MappingsByCode()
+	codedMapping, err := GetDhis2MappingsByCode(config.DHIS2GWConf.API.AggregateMappingScheme)
 	if err != nil {
 		log.Debugf("Error getting code dimensions: %v", err)
 		return dv

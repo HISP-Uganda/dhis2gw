@@ -108,7 +108,7 @@ func GetDhis2Mappings() (map[string]*Dhis2Mapping, error) {
 }
 
 // GetDhis2MappingsByCode a map[string]*Dhis2Mapping where the key is the code of the mapping
-func GetDhis2MappingsByCode() (map[string]*Dhis2Mapping, error) {
+func GetDhis2MappingsByCode(scheme string) (map[string]*Dhis2Mapping, error) {
 	dbConn := db.GetDB()
 	rows, err := dbConn.Queryx("SELECT * FROM dhis2_mappings")
 	if err != nil {
@@ -124,7 +124,12 @@ func GetDhis2MappingsByCode() (map[string]*Dhis2Mapping, error) {
 			log.WithError(err).Error("Failed to scan Dhis2Mapping row")
 			continue
 		}
-		mappings[m.Code] = &m
+		if scheme != "" && scheme == "UID" {
+
+			mappings[m.DataElement] = &m
+		} else {
+			mappings[m.Code] = &m
+		}
 	}
 	return mappings, nil
 }

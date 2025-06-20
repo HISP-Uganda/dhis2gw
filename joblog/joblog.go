@@ -75,6 +75,43 @@ func (jl *JobLog) UpdateStatusAndResponse(status, response string) error {
 	return err
 }
 
+// UpdateStatusAndErrors updates the job log status and error messages.
+func (jl *JobLog) UpdateStatusAndErrors(status, errors string) error {
+	_, err := jl.db.Exec(
+		`UPDATE submission_log SET status = $1, errors = $2, last_attempt_at = NOW() WHERE id = $3`,
+		status, errors, jl.ID,
+	)
+	if err == nil {
+		jl.Status = status
+		jl.Errors = sql.NullString{String: errors, Valid: true}
+	}
+	return err
+}
+
+// UpdateErrors updates the job log with error messages.
+func (jl *JobLog) UpdateErrors(errors string) error {
+	_, err := jl.db.Exec(
+		`UPDATE submission_log SET errors = $1, last_attempt_at = NOW() WHERE id = $2`,
+		errors, jl.ID,
+	)
+	if err == nil {
+		jl.Errors = sql.NullString{String: errors, Valid: true}
+	}
+	return err
+}
+
+// UpdateResponse updates the job log with a DHIS2 response.
+func (jl *JobLog) UpdateResponse(response string) error {
+	_, err := jl.db.Exec(
+		`UPDATE submission_log SET response = $1, last_attempt_at = NOW() WHERE id = $2`,
+		response, jl.ID,
+	)
+	if err == nil {
+		jl.Response = sql.NullString{String: response, Valid: true}
+	}
+	return err
+}
+
 // IncrementRetry increments the retry count and resets the status to "queued".
 func (jl *JobLog) IncrementRetry() error {
 	_, err := jl.db.Exec(

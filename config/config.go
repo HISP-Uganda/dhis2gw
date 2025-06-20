@@ -20,7 +20,6 @@ import (
 var DHIS2GWConf Config
 var ForceSync *bool
 var SkipSync *bool
-var PilotMode *bool
 var StartDate *string
 var EndDate *string
 var DisableHTTPServer *bool
@@ -57,7 +56,6 @@ func init() {
 	endDate := time.Now().Format("2006-01-02")
 	ForceSync = flag.Bool("force-sync", false, "Whether to forcefully sync organisation unit hierarchy")
 	SkipSync = flag.Bool("skip-sync", false, "Whether to skip measurements sync.")
-	PilotMode = flag.Bool("pilot-mode", false, "Whether we're running integrator in pilot mode")
 	StartDate = flag.String("start-date", startDate, "Date from which to start fetching data (YYYY-MM-DD)")
 	EndDate = flag.String("end-date", endDate, "Date until which to fetch data (YYYY-MM-DD)")
 	DisableHTTPServer = flag.Bool("disable-http-server", false, "Whether to disable HTTP Server")
@@ -93,6 +91,8 @@ func init() {
 
 		}
 	}
+
+	DHIS2GWConf.API.AggregateMappingScheme = "CODE" // Default mapping scheme
 
 	err := viper.Unmarshal(&DHIS2GWConf)
 	if err != nil {
@@ -190,6 +190,7 @@ type Config struct {
 		DHIS2Password             string `mapstructure:"dhis2_password" env:"dhis2_password" env-description:"The DIS2GW base DHIS2  user password"`
 		DHIS2PAT                  string `mapstructure:"dhis2_pat" env:"dhis2_pat" env-description:"The DIS2GW base DHIS2  Personal Access Token"`
 		SaveResponse              string `mapstructure:"save_response" env:"save_response" env-description:"Whether to save the response from DHIS2 in the database" env-default:"true"`
+		AggregateMappingScheme    string `mapstructure:"mapping_scheme" env:"mapping_scheme" env-description:"The Dhis2 Aggregate mapping scheme" env-default:"CODE"`
 		DHIS2DataSet              string `mapstructure:"dhis2_data_set" env:"dhis2_data_set" env-description:"The DIS2GW base DHIS2 DATASET"`
 		DHIS2AttributeOptionCombo string `mapstructure:"dhis2_attribute_option_combo" env:"dhis_2_attribute_option_combo" env-description:"The DIS2GW base DHIS2 Attribute Option Combo"`
 		DHIS2AuthMethod           string `mapstructure:"dhis2_auth_method" env:"dhis2_auth_method" env-description:"The DIS2GW base DHIS2  Authentication Method"`

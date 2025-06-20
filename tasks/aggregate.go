@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"dhis2gw/config"
 	"dhis2gw/db"
 	"dhis2gw/joblog"
 	"dhis2gw/models"
@@ -51,7 +52,6 @@ func HandleAggregateTask(ctx context.Context, task *asynq.Task) error {
 }
 
 func (p *AggregateTaskPayload) Process(ctx context.Context) error {
-
 	payload := p.Payload.ToDHIS2AggregatePayload()
 
 	jl, err := joblog.Load(db.GetDB(), p.LogID)
@@ -63,10 +63,11 @@ func (p *AggregateTaskPayload) Process(ctx context.Context) error {
 	status := "success"
 	dhis2Resp := ""
 	errors := ""
+
 	if err != nil {
 		log.Error("Error sending aggregate data values to DHIS2: ", err)
 		status = "failed"
-		dhis2Resp = err.Error()
+		errors = err.Error()
 	} else {
 		log.Info("Successfully sent aggregate data values to DHIS2")
 		status = resp.Status
@@ -74,15 +75,21 @@ func (p *AggregateTaskPayload) Process(ctx context.Context) error {
 		if err != nil {
 			log.Error("Error marshalling DHIS2 response: ", err)
 			status = "failed"
-			dhis2Resp = err.Error()
+			errors = err.Error()
 		} else {
 			dhis2Resp = string(rp)
 		}
 	}
-	if jl != nil {
-		_ = jl.UpdateStatusAndResponse(status, dhis2Resp)
-	}
-	log.WithFields(log.Fields{"ImportResponse": resp}).Info("Aggregate Import Response")
 
+	if jl != nil {
+		// Save errors (if any) and always update the status
+		_ = jl.UpdateStatusAndErrors(status, errors)
+
+		if config.DHIS2GWConf.API.SaveResponse == "true" && dhis2Resp != "" {
+			_ = jl.UpdateResponse(dhis2Resp)
+		}
+	}
+
+	log.WithFields(log.Fields{"ImportResponse": resp}).Info("Aggregate Import Response")
 	return nil
 }
