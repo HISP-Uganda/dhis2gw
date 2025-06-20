@@ -152,7 +152,7 @@ func GenerateOuMetadataByLevel(level int) []MetadataOu {
 	dbConn := db.GetDB()
 	ouSQL := selectMetaDatOusSQL
 	if level == 1 {
-		topLevelUIDs := strings.Split(config.DHIS2GWConf.API.DHIS2GWDHIS2TreeIDs, ",")
+		topLevelUIDs := strings.Split(config.DHIS2GWConf.API.DHIS2TreeIDs, ",")
 		if len(topLevelUIDs) > 0 {
 			for i, uid := range topLevelUIDs {
 				topLevelUIDs[i] = fmt.Sprintf("'%s'", uid)

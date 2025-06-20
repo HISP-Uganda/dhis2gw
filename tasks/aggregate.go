@@ -62,6 +62,7 @@ func (p *AggregateTaskPayload) Process(ctx context.Context) error {
 	resp, err := dhis2Client.SendAggregateDataValues(ctx, &payload)
 	status := "success"
 	dhis2Resp := ""
+	errors := ""
 	if err != nil {
 		log.Error("Error sending aggregate data values to DHIS2: ", err)
 		status = "failed"

@@ -536,11 +536,11 @@ func CreateServers(db *sqlx.DB, servers []Server) (dbutils.MapAnything, error) {
 func CreateBaseDHIS2Server() {
 	metadataServer := &Server{}
 	metadataServer.s.Name = "base_OU"
-	metadataServer.s.URL = config.DHIS2GWConf.API.DHIS2GWDHIS2BaseURL + "/metadata.json"
-	metadataServer.s.Username = config.DHIS2GWConf.API.DHIS2GWDHIS2User
-	metadataServer.s.Password = config.DHIS2GWConf.API.DHIS2GWDHIS2Password
+	metadataServer.s.URL = config.DHIS2GWConf.API.DHIS2BaseURL + "/metadata.json"
+	metadataServer.s.Username = config.DHIS2GWConf.API.DHIS2User
+	metadataServer.s.Password = config.DHIS2GWConf.API.DHIS2Password
 	metadataServer.s.AuthMethod = "Basic"
-	metadataServer.s.AuthToken = config.DHIS2GWConf.API.DHIS2GWDHIS2PAT
+	metadataServer.s.AuthToken = config.DHIS2GWConf.API.DHIS2PAT
 	metadataServer.s.EndPointType = "OUMetadata"
 
 	metadataServer.s.IPAddress = "*"
@@ -561,14 +561,14 @@ func CreateBaseDHIS2Server() {
 	ouGroupAddServer := *metadataServer
 	ouGroupAddServer.s.Name = "base_OU_GroupAdd"
 	ouGroupAddServer.s.HTTPMethod = "PATCH"
-	ouGroupAddServer.s.URL = config.DHIS2GWConf.API.DHIS2GWDHIS2BaseURL + "/organisationUnitGroups"
+	ouGroupAddServer.s.URL = config.DHIS2GWConf.API.DHIS2BaseURL + "/organisationUnitGroups"
 	ouGroupAddServer.s.EndPointType = "OU_ORGUNIT_GROUP_ADD"
 	ouGroupAddServer.s.URLParams = make(dbutils.MapAnything)
 
 	ouUpdateServer := *metadataServer
 	ouUpdateServer.s.Name = "base_OU_Update"
 	ouUpdateServer.s.HTTPMethod = "PATCH"
-	ouUpdateServer.s.URL = config.DHIS2GWConf.API.DHIS2GWDHIS2BaseURL + "/organisationUnits"
+	ouUpdateServer.s.URL = config.DHIS2GWConf.API.DHIS2BaseURL + "/organisationUnits"
 	ouUpdateServer.s.EndPointType = "OU_ORGUNIT_UPDATE"
 	ouUpdateServer.s.URLParams = make(dbutils.MapAnything)
 
@@ -598,7 +598,7 @@ func SyncLocationsToServer(serverName string) {
 	p.Add("fields", "id,name")
 	p.Add("paging", "true")
 	p.Add("pageSize", "1")
-	p.Add("level", fmt.Sprintf("%d", config.DHIS2GWConf.API.DHIS2GWDHIS2FacilityLevel))
+	p.Add("level", fmt.Sprintf("%d", config.DHIS2GWConf.API.DHIS2FacilityLevel))
 	chekOusURL := baseDHIS2URL + "/api/organisationUnits.json?"
 	//if strings.LastIndex(ouURL, "?") == len(ouURL)-1 {
 	//	ouURL += p.Encode()
@@ -659,7 +659,7 @@ func SyncLocationsToServer(serverName string) {
 
 		// Send Ous
 		// for level := 1; level < 3; level++ {
-		for level := 1; level < config.DHIS2GWConf.API.DHIS2GWDHIS2FacilityLevel; level++ {
+		for level := 1; level < config.DHIS2GWConf.API.DHIS2FacilityLevel; level++ {
 
 			syncOus := GenerateOuMetadataByLevel(level)
 			//for _, ou := range syncOus {
@@ -670,7 +670,7 @@ func SyncLocationsToServer(serverName string) {
 			//		log.WithFields(log.Fields{"Server": serverName, "Response": string(rBody)}).Info("Metadata Import")
 			//	}
 			//}
-			ouChunks := lo.Chunk(syncOus, config.DHIS2GWConf.API.DHIS2GWMetadataBatchSize)
+			ouChunks := lo.Chunk(syncOus, config.DHIS2GWConf.API.MetadataBatchSize)
 			// ouChunks := lo.Chunk(syncOus, 1)
 
 			for _, chunck := range ouChunks {
@@ -682,7 +682,7 @@ func SyncLocationsToServer(serverName string) {
 				if rBody != nil {
 					log.WithFields(log.Fields{"Server": serverName, "Response": string(rBody)}).Info("Metadata Import")
 				}
-				if level < config.DHIS2GWConf.API.DHIS2GWDHIS2FacilityLevel-1 {
+				if level < config.DHIS2GWConf.API.DHIS2FacilityLevel-1 {
 					time.Sleep(5 * time.Second) // give a longer time to ensure creation on the other side
 				} else {
 					time.Sleep(3 * time.Second)

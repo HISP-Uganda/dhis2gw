@@ -26,11 +26,11 @@ func GetDHIS2BaseURL(url string) (string, error) {
 
 func InitDhis2Server() {
 	Dhis2Server = &Server{
-		BaseUrl:    config.DHIS2GWConf.API.DHIS2GWDHIS2BaseURL,
-		Username:   config.DHIS2GWConf.API.DHIS2GWDHIS2User,
-		Password:   config.DHIS2GWConf.API.DHIS2GWDHIS2Password,
-		AuthToken:  config.DHIS2GWConf.API.DHIS2GWDHIS2PAT,
-		AuthMethod: config.DHIS2GWConf.API.DHIS2GWDHIS2AuthMethod,
+		BaseUrl:    config.DHIS2GWConf.API.DHIS2BaseURL,
+		Username:   config.DHIS2GWConf.API.DHIS2User,
+		Password:   config.DHIS2GWConf.API.DHIS2Password,
+		AuthToken:  config.DHIS2GWConf.API.DHIS2PAT,
+		AuthMethod: config.DHIS2GWConf.API.DHIS2AuthMethod,
 	}
 }
 

@@ -32,8 +32,8 @@ func main() {
 	// Initialize DHIS2 client and inject it into tasks package
 	dhis2Client := sdk.NewClient(
 		config.DHIS2GWConf.API.DHIS2GWBaseURL,
-		config.DHIS2GWConf.API.DHIS2GWDHIS2User,
-		config.DHIS2GWConf.API.DHIS2GWDHIS2Password)
+		config.DHIS2GWConf.API.DHIS2User,
+		config.DHIS2GWConf.API.DHIS2Password)
 	tasks.SetClient(dhis2Client)
 
 	// Set up Asynq server

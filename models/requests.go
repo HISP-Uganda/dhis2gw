@@ -155,7 +155,7 @@ func NewRequest(c *gin.Context, db *sqlx.DB) (Request, error) {
 	r.ObjectType = c.Query("objectType")
 	r.Errors = c.Query("extras")
 	r.District = c.Query("district")
-	ccList := c.DefaultQuery("cc", config.DHIS2GWConf.API.DHIS2GWCCDHIS2Servers)
+	ccList := c.DefaultQuery("cc", config.DHIS2GWConf.API.CCDHIS2Servers)
 	serverIDs := lo.Map(strings.Split(ccList, ","), func(name string, _ int) int64 { // lodash stuff
 		return GetServerIDByName(name)
 	})

@@ -16,6 +16,7 @@ type JobLog struct {
 	LastAttempt sql.NullTime    `db:"last_attempt_at"`
 	TaskID      sql.NullString  `db:"task_id"`
 	Response    sql.NullString  `db:"response"`
+	Errors      sql.NullString  `db:"errors"` // Optional field for storing error messages
 
 	db *sqlx.DB // not persisted, for method receivers
 }
@@ -43,7 +44,7 @@ func New(db *sqlx.DB, payload interface{}) (*JobLog, error) {
 func Load(db *sqlx.DB, id int64) (*JobLog, error) {
 	var jl JobLog
 	err := db.Get(&jl, `
-		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response
+		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response, errors
 		FROM submission_log WHERE id = $1`, id)
 	if err != nil {
 		return nil, err
@@ -91,7 +92,7 @@ func (jl *JobLog) IncrementRetry() error {
 func ListFailed(db *sqlx.DB) ([]*JobLog, error) {
 	var jobs []*JobLog
 	err := db.Select(&jobs, `
-		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response
+		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response, errors
 		FROM submission_log WHERE status = 'failed'
 		ORDER BY submitted_at DESC
 	`)
@@ -105,7 +106,7 @@ func ListFailed(db *sqlx.DB) ([]*JobLog, error) {
 func GetByID(db *sqlx.DB, id int64) (*JobLog, error) {
 	var jl JobLog
 	err := db.Get(&jl, `
-		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response
+		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response, errors
 		FROM submission_log WHERE id = $1`, id)
 	if err != nil {
 		return nil, err
@@ -118,7 +119,7 @@ func GetByID(db *sqlx.DB, id int64) (*JobLog, error) {
 func GetByTaskID(db *sqlx.DB, taskID string) (*JobLog, error) {
 	var jl JobLog
 	err := db.Get(&jl, `
-		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response
+		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response, errors
 		FROM submission_log WHERE task_id = $1`, taskID)
 	if err != nil {
 		return nil, err

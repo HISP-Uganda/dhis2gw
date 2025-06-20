@@ -56,9 +56,9 @@ func main() {
 	}(client)
 
 	dhis2Client := sdk.NewClient(
-		config.DHIS2GWConf.API.DHIS2GWDHIS2BaseURL,
-		config.DHIS2GWConf.API.DHIS2GWDHIS2User,
-		config.DHIS2GWConf.API.DHIS2GWDHIS2Password)
+		config.DHIS2GWConf.API.DHIS2BaseURL,
+		config.DHIS2GWConf.API.DHIS2User,
+		config.DHIS2GWConf.API.DHIS2Password)
 	tasks.SetClient(dhis2Client)
 
 	var wg sync.WaitGroup

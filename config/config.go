@@ -184,33 +184,26 @@ type Config struct {
 	} `yaml:"server"`
 
 	API struct {
-		DHIS2GWBaseURL                   string `mapstructure:"dhis2gw_base_url" env:"DHIS2GW_BASE_URL" env-description:"The DIS2GW base API URL"`
-		DHIS2GWToken                     string `mapstructure:"dhis2gw_token"  env:"DHIS2GW_TOKEN" env-description:"The DIS2GW API token"`
-		DHIS2GWPilotDistricts            string `mapstructure:"dhis2gw_pilot_districts" env:"DHIS2GW_PILOT_DISTRICTS" env-description:"The DIS2GW Integration pilot districts" env-default:"Kampala District"`
-		DHIS2GWDHIS2Country              string `mapstructure:"dhis2gw_dhis2_country" env:"DHIS2GW_DHIS2_COUNTRY" env-description:"The DIS2GW base DHIS2 Country"`
-		DHIS2GWDHIS2BaseURL              string `mapstructure:"dhis2gw_dhis2_base_url" env:"DHIS2GW_DHIS2_BASE_URL" env-description:"The DIS2GW base DHIS2 instance base API URL"`
-		DHIS2GWDHIS2User                 string `mapstructure:"dhis2gw_dhis2_user"  env:"DHIS2GW_DHIS2_USER" env-description:"The DIS2GW base DHIS2 username"`
-		DHIS2GWDHIS2Password             string `mapstructure:"dhis2gw_dhis2_password"  env:"DHIS2GW_DHIS2_PASSWORD" env-description:"The DIS2GW base DHIS2  user password"`
-		DHIS2GWDHIS2PAT                  string `mapstructure:"dhis2gw_dhis2_pat"  env:"DHIS2GW_DHIS2_PAT" env-description:"The DIS2GW base DHIS2  Personal Access Token"`
-		DHIS2GWDHIS2DataSet              string `mapstructure:"dhis2gw_dhis2_dataset"  env:"DHIS2GW_DHIS2_DATASET" env-description:"The DIS2GW base DHIS2 DATASET"`
-		DHIS2GWDHIS2AttributeOptionCombo string `mapstructure:"dhis2gw_dhis2_attribute_option_combo"  env:"DHIS2GW_DHIS2_ATTRIBUTE_OPTION_COMBO" env-description:"The DIS2GW base DHIS2 Attribute Option Combo"`
-		DHIS2GWDHIS2AuthMethod           string `mapstructure:"dhis2gw_dhis2_auth_method"  env:"DHIS2GW_DHIS2_AUTH_METHOD" env-description:"The DIS2GW base DHIS2  Authentication Method"`
-		DHIS2GWDHIS2TreeIDs              string `mapstructure:"dhis2gw_dhis2_tree_ids"  env:"DHIS2GW_DHIS2_TREE_IDS" env-description:"The DIS2GW base DHIS2  orgunits top level ids"`
-		DHIS2GWDHIS2FacilityLevel        int    `mapstructure:"dhis2gw_dhis2_facility_level"  env:"DHIS2GW_DHIS2_FACILITY_LEVEL" env-description:"The base DHIS2  Orgunit Level for health facilities" env-default:"5"`
-		DHIS2GWDHIS2DistrictLevelName    string `mapstructure:"dhis2gw_dhis2_district_oulevel_name"  env:"DHIS2GW_DHIS2_DISTRICT_OULEVEL_NAME" env-description:"The DIS2GW base DHIS2 OU Level name for districts" env-default:"District/City"`
-		DHIS2GWDHIS2OUAIRQOIDAttributeID string `mapstructure:"dhis2gw_dhis2_ou_dhis2gw_attribute_id" env:"DHIS2GW_DHIS2_OU_AIRQOID_ATTRIBUTE_ID" env-description:"The DHIS2 OU AIRQOID Attribute ID"`
-		DHIS2GWCCDHIS2Servers            string `mapstructure:"dhis2gw_cc_dhis2_servers"  env:"DHIS2GW_CC_DHIS2_SERVERS" env-description:"The CC DHIS2 instances to receive copy of facilities"`
-		DHIS2GWCCDHIS2HierarchyServers   string `mapstructure:"dhis2gw_cc_dhis2_hierarchy_servers"  env:"DHIS2GW_CC_DHIS2_HIERARCHY_SERVERS" env-description:"The DIS2GW CC DHIS2 instances to receive copy of OU hierarchy"`
-		DHIS2GWCCDHIS2CreateServers      string `mapstructure:"dhis2gw_cc_dhis2_create_servers"  env:"DHIS2GW_CC_DHIS2_CREATE_SERVERS" env-description:"The DIS2GW CC DHIS2 instances to receive copy of OU creations"`
-		DHIS2GWCCDHIS2UpdateServers      string `mapstructure:"dhis2gw_cc_dhis2_update_servers"  env:"DHIS2GW_CC_DHIS2_UPDATE_SERVERS" env-description:"The DIS2GW CC DHIS2 instances to receive copy of OU updates"`
-		DHIS2GWCCDHIS2OuGroupAddServers  string `mapstructure:"dhis2gw_cc_dhis2_ougroup_add_servers"  env:"DHIS2GW_CC_DHIS2_OUGROUP_ADD_SERVERS" env-description:"The DIS2GW CC DHIS2 instances APIs used to add ous to groups"`
-		DHIS2GWMetadataBatchSize         int    `mapstructure:"dhis2gw_metadata_batch_size"  env:"DHIS2GW_METADATA_BATCH_SIZE" env-description:"The DIS2GW Metadata items to chunk in a metadata request" env-default:"50"`
-		DHIS2GWSyncCronExpression        string `mapstructure:"dhis2gw_sync_cron_expression"  env:"DHIS2GW_SYNC_CRON_EXPRESSION" env-description:"The DIS2GW Measurements Syncronisation Cron Expression" env-default:"0 0-23/6 * * *"`
-		DHIS2GWRetryCronExpression       string `mapstructure:"dhis2gw_retry_cron_expression"  env:"DHIS2GW_RETRY_CRON_EXPRESSION" env-description:"The DIS2GW request retry Cron Expression" env-default:"*/5 * * * *"`
-		AuthToken                        string `mapstructure:"authtoken" env:"RAPIDPRO_AUTH_TOKEN" env-description:"API JWT authorization token"`
-		DIS2GWODKBaseURL                 string `mapstructure:"dhis2gw_odk_base_url" env:"DHIS2GW_ODK_BASE_URL" env-description:"The DIS2GW ODK Base URL"`
-		DIS2GWODKUser                    string `mapstructure:"dhis2gw_odk_user" env:"DHIS2GW_ODK_USER" env-description:"The DIS2GW ODK User"`
-		DIS2GWODKPassword                string `mapstructure:"dhis2gw_odk_password" env:"DHIS2GW_ODK_PASSWORD" env-description:"The DIS2GW ODK Password"`
+		DHIS2Country              string `mapstructure:"dhis2_country" env:"dhis2_country" env-description:"The DIS2GW base DHIS2 Country"`
+		DHIS2BaseURL              string `mapstructure:"dhis2_base_url" env:"dhis2_base_url" env-description:"The DIS2GW base DHIS2 instance base API URL"`
+		DHIS2User                 string `mapstructure:"dhis2_user" env:"dhis2_user" env-description:"The DIS2GW base DHIS2 username"`
+		DHIS2Password             string `mapstructure:"dhis2_password" env:"dhis2_password" env-description:"The DIS2GW base DHIS2  user password"`
+		DHIS2PAT                  string `mapstructure:"dhis2_pat" env:"dhis2_pat" env-description:"The DIS2GW base DHIS2  Personal Access Token"`
+		SaveResponse              string `mapstructure:"save_response" env:"save_response" env-description:"Whether to save the response from DHIS2 in the database" env-default:"true"`
+		DHIS2DataSet              string `mapstructure:"dhis2_data_set" env:"dhis2_data_set" env-description:"The DIS2GW base DHIS2 DATASET"`
+		DHIS2AttributeOptionCombo string `mapstructure:"dhis2_attribute_option_combo" env:"dhis_2_attribute_option_combo" env-description:"The DIS2GW base DHIS2 Attribute Option Combo"`
+		DHIS2AuthMethod           string `mapstructure:"dhis2_auth_method" env:"dhis2_auth_method" env-description:"The DIS2GW base DHIS2  Authentication Method"`
+		DHIS2TreeIDs              string `mapstructure:"dhis2_tree_i_ds" env:"dhis2_tree_i_ds" env-description:"The DIS2GW base DHIS2  orgunits top level ids"`
+		DHIS2FacilityLevel        int    `mapstructure:"dhis2_facility_level" env:"dhis2_facility_level" env-description:"The base DHIS2  Orgunit Level for health facilities" env-default:"5"`
+		DHIS2DistrictLevelName    string `mapstructure:"dhis2_district_oulevel_name"  env:"DHIS2GW_DHIS2_DISTRICT_OULEVEL_NAME" env-description:"The DIS2GW base DHIS2 OU Level name for districts" env-default:"District/City"`
+		CCDHIS2Servers            string `mapstructure:"cc_dhis2_servers" env:"cc_dhis2_servers" env-description:"The CC DHIS2 instances to receive copy of facilities"`
+		CCDHIS2HierarchyServers   string `mapstructure:"cc_dhis2_hierarchy_servers" env:"cc_dhis2_hierarchy_servers" env-description:"The DIS2GW CC DHIS2 instances to receive copy of OU hierarchy"`
+		CCDHIS2CreateServers      string `mapstructure:"cc_dhis2_create_servers" env:"cc_dhis2_create_servers" env-description:"The DIS2GW CC DHIS2 instances to receive copy of OU creations"`
+		CCDHIS2UpdateServers      string `mapstructure:"cc_dhis2_update_servers" env:"cc_dhis2_update_servers" env-description:"The DIS2GW CC DHIS2 instances to receive copy of OU updates"`
+		CCDHIS2OuGroupAddServers  string `mapstructure:"cc_dhis2_ou_group_add_servers" env:"cc_dhis2_ou_group_add_servers" env-description:"The DIS2GW CC DHIS2 instances APIs used to add ous to groups"`
+		MetadataBatchSize         int    `mapstructure:"metadata_batch_size" env:"metadata_batch_size" env-description:"The DIS2GW Metadata items to chunk in a metadata request" env-default:"50"`
+		SyncCronExpression        string `mapstructure:"sync_cron_expression" env:"sync_cron_expression" env-description:"The DIS2GW Measurements Syncronisation Cron Expression" env-default:"0 0-23/6 * * *"`
+		RetryCronExpression       string `mapstructure:"retry_cron_expression" env:"retry_cron_expression" env-description:"The DIS2GW request retry Cron Expression" env-default:"*/5 * * * *"`
 	} `yaml:"api"`
 }
 
