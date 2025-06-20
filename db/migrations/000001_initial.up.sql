@@ -158,6 +158,7 @@ CREATE TABLE IF NOT EXISTS user_apitoken
     user_id   BIGINT    NOT NULL REFERENCES users (id) ON DELETE CASCADE ON UPDATE CASCADE,
     token     TEXT      NOT NULL DEFAULT '',
     is_active BOOLEAN   NOT NULL DEFAULT TRUE,
+    expires_at timestamptz DEFAULT NULL, -- if NULL, token does not expire
     created   timestamptz        DEFAULT CURRENT_TIMESTAMP,
     updated   timestamptz        DEFAULT CURRENT_TIMESTAMP
 );

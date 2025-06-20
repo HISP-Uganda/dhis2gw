@@ -19,14 +19,14 @@ func BasicAuth(dbConn *sqlx.DB, asynqClient *asynq.Client) gin.HandlerFunc {
 
 		auth := strings.SplitN(c.Request.Header.Get("Authorization"), " ", 2)
 
-		if len(auth) != 2 || (auth[0] != "Basic" && auth[0] != "Token:") {
-			RespondWithError(401, "Unauthorized", c)
+		if len(auth) != 2 || (auth[0] != "Basic" && auth[0] != "Token") {
+			RespondWithError(401, "Unauthorized - unknown authorization type", c)
 			return
 		}
 		tokenAuthenticated, userUID := AuthenticateUserToken(auth[1])
-		if auth[0] == "Token:" {
+		if auth[0] == "Token" {
 			if !tokenAuthenticated {
-				RespondWithError(401, "Unauthorized", c)
+				RespondWithError(401, "Unauthorized - Token auth failed", c)
 				return
 			}
 			c.Set("currentUser", userUID)
@@ -40,7 +40,7 @@ func BasicAuth(dbConn *sqlx.DB, asynqClient *asynq.Client) gin.HandlerFunc {
 		basicAuthenticated, userUID := AuthenticateUser(pair[0], pair[1])
 
 		if len(pair) != 2 || !basicAuthenticated {
-			RespondWithError(401, "Unauthorized", c)
+			RespondWithError(401, "Unauthorized: Basic Auth failed", c)
 			return
 		}
 		c.Set("currentUser", userUID)

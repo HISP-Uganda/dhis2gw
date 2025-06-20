@@ -51,7 +51,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 
 	// Save user
 	_, err = db.GetDB().NamedExec(`INSERT INTO users (uid, username, password, firstname, 
-			lastname, email, telephone, is_active, is_system_user, created, updated)
+			lastname, email, telephone, is_active, is_admin_user, created, updated)
 		VALUES (:uid, :username, :password, :firstname, :lastname, :email, :telephone, 
 			:is_active, :is_system_user, :created, :updated) RETURNING id`, user)
 	if err != nil {
@@ -174,12 +174,13 @@ func (uc *UserController) CreateUserToken(c *gin.Context) {
 	// Generate a new token
 	token, err := models.GenerateToken()
 	if err != nil {
+		log.Errorf("Failed to generate token: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 
-	// Set token expiration (e.g., 30 days from now)
-	expirationTime := time.Now().Add(30 * 24 * time.Hour) // 30-day validity
+	// Set token expiration (e.g., 365 days from now)
+	expirationTime := time.Now().Add(365 * 24 * time.Hour) // 365-day validity
 
 	// Create a new UserToken object
 	userToken := models.UserToken{
@@ -193,10 +194,11 @@ func (uc *UserController) CreateUserToken(c *gin.Context) {
 
 	// Save token in the database
 	_, err = dbConn.NamedExec(`
-		INSERT INTO user_apitoken (user_id, token, is_active, expires_at, created_at, updated_at)
+		INSERT INTO user_apitoken (user_id, token, is_active, expires_at, created, updated)
 		VALUES (:user_id, :token, :is_active, :expires_at, :created, :updated)`, userToken)
 
 	if err != nil {
+		log.Errorf("Failed to generate token: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save user token"})
 		return
 	}
@@ -260,8 +262,8 @@ func (uc *UserController) RefreshUserToken(c *gin.Context) {
 		return
 	}
 
-	// Set new expiration (e.g., 30 days from now)
-	newExpiration := time.Now().Add(30 * 24 * time.Hour)
+	// Set new expiration (e.g., 365 days from now)
+	newExpiration := time.Now().Add(365 * 24 * time.Hour)
 
 	// Create a new UserToken object
 	newUserToken := models.UserToken{
@@ -275,7 +277,7 @@ func (uc *UserController) RefreshUserToken(c *gin.Context) {
 
 	// Save the new token
 	_, err = dbConn.NamedExec(`
-		INSERT INTO user_apitoken (user_id, token, is_active, expires_at, created_at, updated_at)
+		INSERT INTO user_apitoken (user_id, token, is_active, expires_at, created, updated)
 		VALUES (:user_id, :token, :is_active, :expires_at, :created_at, :updated_at)`, newUserToken)
 
 	if err != nil {
