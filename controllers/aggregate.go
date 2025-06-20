@@ -19,6 +19,19 @@ var aggregateRequestSchema string
 
 type AggregateController struct{}
 
+// CreateRequest godoc
+// @Summary Submit aggregate data request
+// @Description Accepts a JSON payload for an aggregate DHIS2 submission. Requires `Authorization: Token <token>` header.
+// @Tags aggregate
+// @Accept json
+// @Produce json
+// @Security BasicAuth
+// @Security TokenAuth
+// @Param request body models.AggregateRequest true "Aggregate submission payload"
+// @Success 200 {object} models.AggregateResponse
+// @Failure 400 {object} models.ErrorResponse "Invalid JSON or schema validation failed"
+// @Failure 500 {object} models.ErrorResponse "Server-side error"
+// @Router /api/v2/aggregate [post]
 func (a *AggregateController) CreateRequest(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {

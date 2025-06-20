@@ -14,7 +14,19 @@ import (
 
 type UserController struct{}
 
-// CreateUser - Admin only
+// CreateUser godoc
+// @Summary Create a new user
+// @Description Registers a new user with username, password, and profile info
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param request body models.UserInput true "User registration input"
+// @Success 201 {object} models.UserCreateResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v2/users [post]
+// @Security BasicAuth
+// @Security TokenAuth
 func (uc *UserController) CreateUser(c *gin.Context) {
 	var input struct {
 		Username    string `json:"username"`
@@ -75,7 +87,20 @@ func (uc *UserController) GetUserByUID(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-// UpdateUser updates user details using uid
+// UpdateUser godoc
+// @Summary Update user details
+// @Description Updates an existing user's profile using their UID. Requires authentication.
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param uid path string true "User UID"
+// @Param user body models.UpdateUserInput true "Updated user information"
+// @Success 200 {object} models.SuccessResponse "User updated successfully"
+// @Failure 400 {object} models.ErrorResponse "Invalid request body"
+// @Failure 500 {object} models.ErrorResponse "Server/internal error"
+// @Security BasicAuth
+// @Security TokenAuth
+// @Router /api/v2/users/{uid} [put]
 func (uc *UserController) UpdateUser(c *gin.Context) {
 	uid := c.Param("uid")
 
@@ -122,7 +147,19 @@ func (uc *UserController) DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User deactivated"})
 }
 
-// CreateUserToken generates and saves an API token for the currently authenticated user
+// CreateUserToken godoc
+// @Summary Generate or return a user token
+// @Description If the user has an active token, it is returned; otherwise a new one is created. Requires authentication.
+// @Tags users
+// @Produce json
+// @Security BasicAuth
+// @Security TokenAuth
+// @Success 200 {object} models.UserTokenResponse "Returned if an active token already exists"
+// @Success 201 {object} models.UserTokenResponse "Returned if a new token was generated"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized or missing user context"
+// @Failure 404 {object} models.ErrorResponse "User not found"
+// @Failure 500 {object} models.ErrorResponse "Server/internal error"
+// @Router /api/v2/users/getToken [post] generates and saves an API token for the currently authenticated user
 func (uc *UserController) CreateUserToken(c *gin.Context) {
 	// Extract the authenticated user's UID from the request context
 	authUserUID, exists := c.Get("currentUser")
@@ -210,7 +247,18 @@ func (uc *UserController) CreateUserToken(c *gin.Context) {
 	})
 }
 
-// RefreshUserToken allows the currently authenticated user to refresh their own API token
+// RefreshUserToken godoc
+// @Summary Refresh user's API token
+// @Description Deactivates the current active token (if any) and generates a new one. Requires authentication.
+// @Tags users
+// @Produce json
+// @Security BasicAuth
+// @Security TokenAuth
+// @Success 200 {object} models.UserTokenResponse "New token generated"
+// @Failure 401 {object} models.ErrorResponse "Unauthorized or missing user context"
+// @Failure 404 {object} models.ErrorResponse "No active token found"
+// @Failure 500 {object} models.ErrorResponse "Server/internal error"
+// @Router /api/v2/users/refreshToken [post]
 func (uc *UserController) RefreshUserToken(c *gin.Context) {
 	// Extract the authenticated user's UID from context
 	authUserUID, exists := c.Get("currentUser")

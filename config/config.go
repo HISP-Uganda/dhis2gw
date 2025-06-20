@@ -175,6 +175,7 @@ type Config struct {
 		TemplatesDirectory          string `mapstructure:"templates_directory" env:"DHIS2GW_TEMPLATES_DIR" env-default:"./templates"`
 		StaticDirectory             string `mapstructure:"static_directory" env:"DHIS2GW_STATIC_DIR" env-default:"./static"`
 		LogDirectory                string `mapstructure:"logdir" env:"DHIS2GW_LOGDIR" env-default:"/var/log/dhis2gw"`
+		DocsDirectory               string `mapstructure:"docs_directory" env:"RTC_DOCS_DIR" env-default:"./docs/md_docs"`
 		MigrationsDirectory         string `mapstructure:"migrations_dir" env:"DHIS2GW_MIGRATTIONS_DIR" env-default:"file:///usr/share/dhis2gw/db/migrations"`
 		UseSSL                      string `mapstructure:"use_ssl" env:"DHIS2GW_USE_SSL" env-default:"true"`
 		SSLClientCertKeyFile        string `mapstructure:"ssl_client_certkey_file" env:"SSL_CLIENT_CERTKEY_FILE" env-default:""`

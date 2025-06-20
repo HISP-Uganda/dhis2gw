@@ -1,0 +1,304 @@
+basePath: /api/v2
+definitions:
+  models.AggregateRequest:
+    properties:
+      dataSet:
+        example: pKxY5g6WgDm
+        type: string
+      dataValues:
+        additionalProperties: {}
+        type: object
+      orgUnit:
+        example: g8xY5g6WgXl
+        type: string
+      orgUnitName:
+        example: Health Center 1
+        type: string
+      period:
+        example: "202401"
+        type: string
+    type: object
+  models.AggregateResponse:
+    properties:
+      message:
+        example: Aggregate request queued for processing
+        type: string
+      payload:
+        additionalProperties: true
+        type: object
+      submission_id:
+        example: 1034
+        type: integer
+      task_id:
+        example: c5265e8f-2f15-4090-b25e-303d748adfce
+        type: string
+    type: object
+  models.ErrorResponse:
+    properties:
+      detail: {}
+      error:
+        example: Invalid JSON
+        type: string
+    type: object
+  models.SuccessResponse:
+    properties:
+      message:
+        example: User updated successfully
+        type: string
+    type: object
+  models.UpdateUserInput:
+    properties:
+      email:
+        example: john.doe@example.com
+        type: string
+      firstName:
+        example: John
+        type: string
+      lastName:
+        example: Doe
+        type: string
+      telephone:
+        example: "+256700000000"
+        type: string
+      username:
+        example: jdoe
+        type: string
+    type: object
+  models.UserCreateResponse:
+    properties:
+      message:
+        example: User created successfully!
+        type: string
+      uid:
+        example: aS1kT9rLQ9f
+        type: string
+    type: object
+  models.UserInput:
+    properties:
+      email:
+        example: john@example.com
+        type: string
+      firstName:
+        example: John
+        type: string
+      isActive:
+        example: true
+        type: boolean
+      isAdminUser:
+        example: false
+        type: boolean
+      lastName:
+        example: Doe
+        type: string
+      password:
+        example: s3cretP@ss
+        type: string
+      telephone:
+        example: "+256700000001"
+        type: string
+      username:
+        example: admin
+        type: string
+    type: object
+  models.UserTokenResponse:
+    properties:
+      expires:
+        example: "2026-06-20T10:00:00Z"
+        type: string
+      message:
+        example: Token created successfully
+        type: string
+      token:
+        example: abc123xyzTOKEN
+        type: string
+    type: object
+host: dhis2gw.hispuganda.org
+info:
+  contact:
+    email: ssekiwere@hispuganda.org
+    name: API Support
+    url: http://www.hispuganda.org
+  description: This service provides sends aggregate and tracker data to DHIS2 from
+    third-party systems
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: DHIS2 Gateway Service
+  version: 1.0.1
+paths:
+  /api/v2/aggregate:
+    post:
+      consumes:
+      - application/json
+      description: 'Accepts a JSON payload for an aggregate DHIS2 submission. Requires
+        `Authorization: Token <token>` header.'
+      parameters:
+      - description: Aggregate submission payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AggregateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AggregateResponse'
+        "400":
+          description: Invalid JSON or schema validation failed
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Submit aggregate data request
+      tags:
+      - aggregate
+  /api/v2/users:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new user with username, password, and profile info
+      parameters:
+      - description: User registration input
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.UserCreateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Create a new user
+      tags:
+      - users
+  /api/v2/users/{uid}:
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing user's profile using their UID. Requires authentication.
+      parameters:
+      - description: User UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Updated user information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateUserInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server/internal error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Update user details
+      tags:
+      - users
+  /api/v2/users/getToken:
+    post:
+      description: If the user has an active token, it is returned; otherwise a new
+        one is created. Requires authentication.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returned if an active token already exists
+          schema:
+            $ref: '#/definitions/models.UserTokenResponse'
+        "201":
+          description: Returned if a new token was generated
+          schema:
+            $ref: '#/definitions/models.UserTokenResponse'
+        "401":
+          description: Unauthorized or missing user context
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server/internal error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Generate or return a user token
+      tags:
+      - users
+  /api/v2/users/refreshToken:
+    post:
+      description: Deactivates the current active token (if any) and generates a new
+        one. Requires authentication.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New token generated
+          schema:
+            $ref: '#/definitions/models.UserTokenResponse'
+        "401":
+          description: Unauthorized or missing user context
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: No active token found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server/internal error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Refresh user's API token
+      tags:
+      - users
+schemes:
+- http
+- https
+security:
+- basicAuth: []
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

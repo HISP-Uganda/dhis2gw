@@ -21,7 +21,9 @@ archives:
       - README.md
       # - db/**/*.sql
       - db/**/*.*
-      - docs/**/*.*
+      - docs/md_docs/**/*
+      - docs/static/**/*
+      - docs/templates/**/*
 checksum:
   name_template: 'checksums.txt'
 snapshot:

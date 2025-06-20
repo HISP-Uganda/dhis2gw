@@ -1,0 +1,461 @@
+{
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "This service provides sends aggregate and tracker data to DHIS2 from third-party systems",
+        "title": "DHIS2 Gateway Service",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.hispuganda.org",
+            "email": "ssekiwere@hispuganda.org"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0.1"
+    },
+    "host": "dhis2gw.hispuganda.org",
+    "basePath": "/api/v2",
+    "paths": {
+        "/api/v2/aggregate": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Accepts a JSON payload for an aggregate DHIS2 submission. Requires `Authorization: Token \u003ctoken\u003e` header.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "aggregate"
+                ],
+                "summary": "Submit aggregate data request",
+                "parameters": [
+                    {
+                        "description": "Aggregate submission payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AggregateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.AggregateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid JSON or schema validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/users": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Registers a new user with username, password, and profile info",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create a new user",
+                "parameters": [
+                    {
+                        "description": "User registration input",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserCreateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/users/getToken": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "If the user has an active token, it is returned; otherwise a new one is created. Requires authentication.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Generate or return a user token",
+                "responses": {
+                    "200": {
+                        "description": "Returned if an active token already exists",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserTokenResponse"
+                        }
+                    },
+                    "201": {
+                        "description": "Returned if a new token was generated",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserTokenResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized or missing user context",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server/internal error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/users/refreshToken": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Deactivates the current active token (if any) and generates a new one. Requires authentication.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Refresh user's API token",
+                "responses": {
+                    "200": {
+                        "description": "New token generated",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserTokenResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized or missing user context",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "No active token found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server/internal error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/users/{uid}": {
+            "put": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Updates an existing user's profile using their UID. Requires authentication.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update user details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated user information",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateUserInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server/internal error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.AggregateRequest": {
+            "type": "object",
+            "properties": {
+                "dataSet": {
+                    "type": "string",
+                    "example": "pKxY5g6WgDm"
+                },
+                "dataValues": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "orgUnit": {
+                    "type": "string",
+                    "example": "g8xY5g6WgXl"
+                },
+                "orgUnitName": {
+                    "type": "string",
+                    "example": "Health Center 1"
+                },
+                "period": {
+                    "type": "string",
+                    "example": "202401"
+                }
+            }
+        },
+        "models.AggregateResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Aggregate request queued for processing"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "submission_id": {
+                    "type": "integer",
+                    "example": 1034
+                },
+                "task_id": {
+                    "type": "string",
+                    "example": "c5265e8f-2f15-4090-b25e-303d748adfce"
+                }
+            }
+        },
+        "models.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "detail": {},
+                "error": {
+                    "type": "string",
+                    "example": "Invalid JSON"
+                }
+            }
+        },
+        "models.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "User updated successfully"
+                }
+            }
+        },
+        "models.UpdateUserInput": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "telephone": {
+                    "type": "string",
+                    "example": "+256700000000"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "jdoe"
+                }
+            }
+        },
+        "models.UserCreateResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "User created successfully!"
+                },
+                "uid": {
+                    "type": "string",
+                    "example": "aS1kT9rLQ9f"
+                }
+            }
+        },
+        "models.UserInput": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "john@example.com"
+                },
+                "firstName": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "isActive": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "isAdminUser": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "lastName": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "s3cretP@ss"
+                },
+                "telephone": {
+                    "type": "string",
+                    "example": "+256700000001"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "models.UserTokenResponse": {
+            "type": "object",
+            "properties": {
+                "expires": {
+                    "type": "string",
+                    "example": "2026-06-20T10:00:00Z"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Token created successfully"
+                },
+                "token": {
+                    "type": "string",
+                    "example": "abc123xyzTOKEN"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BasicAuth": {
+            "type": "basic"
+        }
+    },
+    "security": [
+        {
+            "basicAuth": []
+        }
+    ]
+}

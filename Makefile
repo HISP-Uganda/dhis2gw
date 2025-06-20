@@ -6,6 +6,7 @@ clean:
 	rm -f dhis2gw workers/workers
 
 dhis2gw:
+	swag init -g main.go -o docs
 	go build -ldflags="-s -w" -o dhis2gw
 
 worker:

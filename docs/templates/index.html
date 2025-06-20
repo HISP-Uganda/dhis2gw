@@ -1,8 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{{ .title }}</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+
+        .description {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 2rem;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .doc-card {
+            display: block;
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            text-decoration: none;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+            color: #2c3e50;
+        }
+
+        .doc-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .doc-card h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .doc-card p {
+            margin: 0.5rem 0 0;
+            font-size: 0.95rem;
+            color: #777;
+        }
+
+        @media (max-width: 600px) {
+            .doc-card h3 {
+                font-size: 1rem;
+            }
+            .doc-card p {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
 </head>
 <body>
+<div class="container">
+    <h1>📄 DHIS2GW Documentation</h1>
+    <p class="description">
+        A Go application that sends aggregate and tracker data to DHIS2 from third-party systems.
+    </p>
 
+    <div class="card-grid">
+        <a href="/docs/index" class="doc-card">
+            <h3>📘 Overview</h3>
+            <p>Start here to understand what DHIS2GW is and how it works.</p>
+        </a>
+
+        <a href="/docs/overview" class="doc-card">
+            <h3>🔗 Integration Guide</h3>
+            <p>Learn how to connect to NDPIII-ME.</p>
+        </a>
+
+        <a href="/stats" class="doc-card">
+            <h3>📊 Statistics</h3>
+            <p>Explore real-time metrics and system usage.</p>
+        </a>
+
+        <a href="/swagger/index.html" class="doc-card">
+            <h3>🧩 Swagger API Documentation</h3>
+            <p>OpenAPI Swagger documentation.</p>
+        </a>
+    </div>
+</div>
 </body>
 </html>

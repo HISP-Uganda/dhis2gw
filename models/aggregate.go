@@ -10,11 +10,18 @@ import (
 )
 
 type AggregateRequest struct {
-	OrgUnit     string         `json:"orgUnit"`
-	OrgUnitName string         `json:"orgUnitName,omitempty"`
-	Period      string         `json:"period"`
-	DataSet     string         `json:"dataSet"`
+	OrgUnit     string         `json:"orgUnit" example:"g8xY5g6WgXl"`
+	OrgUnitName string         `json:"orgUnitName,omitempty" example:"Health Center 1"`
+	Period      string         `json:"period" example:"202401"`
+	DataSet     string         `json:"dataSet" example:"pKxY5g6WgDm"`
 	DataValues  map[string]any `json:"dataValues"`
+}
+
+type AggregateResponse struct {
+	Message      string                 `json:"message" example:"Aggregate request queued for processing"`
+	Payload      map[string]interface{} `json:"payload"`
+	SubmissionID int64                  `json:"submission_id" example:"1034"`
+	TaskID       string                 `json:"task_id" example:"c5265e8f-2f15-4090-b25e-303d748adfce"`
 }
 
 func (r *AggregateRequest) ToDHIS2AggregatePayload() aggregate.DataValueSetPayload {

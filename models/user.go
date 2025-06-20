@@ -28,6 +28,29 @@ type User struct {
 	Updated     *time.Time `json:"updated,omitempty" db:"updated"`
 }
 
+type UserCreateResponse struct {
+	Message string `json:"message" example:"User created successfully!"`
+	UID     string `json:"uid" example:"aS1kT9rLQ9f"`
+}
+type UserInput struct {
+	Username    string `json:"username" example:"admin"`
+	Password    string `json:"password" example:"s3cretP@ss"`
+	FirstName   string `json:"firstName" example:"John"`
+	LastName    string `json:"lastName" example:"Doe"`
+	Email       string `json:"email" example:"john@example.com"`
+	Telephone   string `json:"telephone" example:"+256700000001"`
+	IsActive    bool   `json:"isActive" example:"true"`
+	IsAdminUser bool   `json:"isAdminUser" example:"false"`
+}
+
+type UpdateUserInput struct {
+	Username  string `json:"username" example:"jdoe"`
+	FirstName string `json:"firstName" example:"John"`
+	LastName  string `json:"lastName" example:"Doe"`
+	Email     string `json:"email" example:"john.doe@example.com"`
+	Phone     string `json:"telephone" example:"+256700000000"`
+}
+
 func (u *User) DeactivateAPITokens(token string) {
 	dbConn := db.GetDB()
 	_, err := dbConn.NamedExec(

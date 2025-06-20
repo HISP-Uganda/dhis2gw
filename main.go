@@ -6,11 +6,15 @@ import (
 	"dhis2gw/config"
 	"dhis2gw/controllers"
 	"dhis2gw/db"
+	"dhis2gw/docs"
 	"dhis2gw/middleware"
 	"dhis2gw/tasks"
 	"fmt"
 	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/gin-gonic/gin"
+	"github.com/gomarkdown/markdown"
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"html/template"
 	"net/http"
 	"os/signal"
@@ -39,6 +43,22 @@ var splash = `
 `
 
 var client *asynq.Client
+
+// @title DHIS2 Gateway Service
+// @version 1.0.1
+// @description This service provides sends aggregate and tracker data to DHIS2 from third-party systems
+// @contact.name API Support
+// @contact.url http://www.hispuganda.org
+// @contact.email ssekiwere@hispuganda.org
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+// @host dhis2gw.hispuganda.org
+// @BasePath /api/v2
+// @schemes http https
+// @securityDefinitions.basic BasicAuth
+// @security basicAuth
+// @in header
+// @name Authorization
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -85,7 +105,9 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 	router.SetHTMLTemplate(tmpl)
 	router.Static("/static", config.DHIS2GWConf.Server.StaticDirectory)
 
-	v2 := router.Group("/api", middleware.BasicAuth(db.GetDB(), client))
+	docs.SwaggerInfo.BasePath = "/api/v2"
+
+	v2 := router.Group("/api/v2", middleware.BasicAuth(db.GetDB(), client))
 	{
 		v2.GET("/test2", func(c *gin.Context) {
 			c.String(200, "Authorized")
@@ -101,6 +123,36 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 		aggregateController := &controllers.AggregateController{}
 		v2.POST("/aggregate", aggregateController.CreateRequest)
 	}
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+	// Documentation Routes
+	// Home Route
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", gin.H{
+			"title": "API Documentation",
+		})
+	})
+	router.GET("/docs/:page", func(c *gin.Context) {
+		docName := c.Param("page")
+
+		// Construct Markdown file path
+		mdFile := fmt.Sprintf("%s/%s.md", config.DHIS2GWConf.Server.DocsDirectory, docName)
+
+		// Read Markdown file
+		mdContent, err := os.ReadFile(mdFile)
+		if err != nil {
+			c.String(http.StatusNotFound, "Documentation not found")
+			return
+		}
+
+		// Convert Markdown to HTML
+		htmlContent := template.HTML(markdown.ToHTML(mdContent, nil, nil))
+
+		// Render docs.html template
+		c.HTML(http.StatusOK, "docs.html", gin.H{
+			"title":   docName,
+			"content": htmlContent,
+		})
+	})
 	router.NoRoute(func(c *gin.Context) {
 		c.String(404, "Page Not Found!")
 	})
