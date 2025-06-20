@@ -24,6 +24,8 @@ archives:
       - docs/md_docs/**/*
       - docs/static/**/*
       - docs/templates/**/*
+      - docs/**/*.json
+      - docs/**/*.yaml
 checksum:
   name_template: 'checksums.txt'
 snapshot:
