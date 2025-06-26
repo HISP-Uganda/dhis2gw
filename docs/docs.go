@@ -23,7 +23,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v2/aggregate": {
+        "/aggregate": {
             "post": {
                 "security": [
                     {
@@ -77,7 +77,214 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v2/users": {
+        "/logs": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Returns a paginated list of job logs with optional filters like status, task ID, job ID, and submission date range.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Get job logs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by task id",
+                        "name": "task_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by job id",
+                        "name": "job_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by exact submitted_at (RFC3339)",
+                        "name": "submitted_at",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Submitted after (RFC3339)",
+                        "name": "submitted_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Submitted before (RFC3339)",
+                        "name": "submitted_to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 20)",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.JobLogPaginatedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/logs/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Get a specific job log entry by its database ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Get job log by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Log ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job log entry",
+                        "schema": {
+                            "$ref": "#/definitions/joblog.JobLogSwagger"
+                        }
+                    },
+                    "404": {
+                        "description": "Log not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "description": "Returns a paginated list of users, with optional filters.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get users",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by UID",
+                        "name": "uid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by username",
+                        "name": "username",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by email",
+                        "name": "email",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by active status",
+                        "name": "is_active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by admin user status",
+                        "name": "is_admin",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 20)",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.PaginatedUserResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -131,7 +338,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v2/users/getToken": {
+        "/users/getToken": {
             "post": {
                 "security": [
                     {
@@ -183,7 +390,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v2/users/refreshToken": {
+        "/users/refreshToken": {
             "post": {
                 "security": [
                     {
@@ -229,7 +436,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v2/users/{uid}": {
+        "/users/{uid}": {
             "put": {
                 "security": [
                     {
@@ -292,6 +499,100 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "controllers.JobLogPaginatedResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/joblog.JobLogSwagger"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 10
+                }
+            }
+        },
+        "controllers.PaginatedUserResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.User"
+                    }
+                },
+                "page": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "example": 10
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "total_pages": {
+                    "type": "integer",
+                    "example": 10
+                }
+            }
+        },
+        "joblog.JobLogSwagger": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "string",
+                    "example": ""
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "last_attempt_at": {
+                    "type": "string",
+                    "example": "2024-06-24T09:00:00Z"
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "response": {
+                    "type": "string",
+                    "example": "OK"
+                },
+                "retry_count": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "status": {
+                    "type": "string",
+                    "example": "SUCCESS"
+                },
+                "submitted_at": {
+                    "type": "string",
+                    "example": "2024-06-24T08:00:00Z"
+                },
+                "task_id": {
+                    "type": "string",
+                    "example": "abc-123"
+                }
+            }
+        },
         "models.AggregateRequest": {
             "type": "object",
             "properties": {
@@ -379,6 +680,47 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "jdoe"
+                }
+            }
+        },
+        "models.User": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "firstname": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_admin_user": {
+                    "type": "boolean"
+                },
+                "lastname": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "telephone": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },

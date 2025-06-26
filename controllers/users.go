@@ -6,9 +6,12 @@ import (
 	"dhis2gw/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -24,7 +27,7 @@ type UserController struct{}
 // @Success 201 {object} models.UserCreateResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v2/users [post]
+// @Router /users [post]
 // @Security BasicAuth
 // @Security TokenAuth
 func (uc *UserController) CreateUser(c *gin.Context) {
@@ -100,7 +103,7 @@ func (uc *UserController) GetUserByUID(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "Server/internal error"
 // @Security BasicAuth
 // @Security TokenAuth
-// @Router /api/v2/users/{uid} [put]
+// @Router /users/{uid} [put]
 func (uc *UserController) UpdateUser(c *gin.Context) {
 	uid := c.Param("uid")
 
@@ -159,7 +162,7 @@ func (uc *UserController) DeleteUser(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse "Unauthorized or missing user context"
 // @Failure 404 {object} models.ErrorResponse "User not found"
 // @Failure 500 {object} models.ErrorResponse "Server/internal error"
-// @Router /api/v2/users/getToken [post] generates and saves an API token for the currently authenticated user
+// @Router /users/getToken [post] generates and saves an API token for the currently authenticated user
 func (uc *UserController) CreateUserToken(c *gin.Context) {
 	// Extract the authenticated user's UID from the request context
 	authUserUID, exists := c.Get("currentUser")
@@ -258,7 +261,7 @@ func (uc *UserController) CreateUserToken(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse "Unauthorized or missing user context"
 // @Failure 404 {object} models.ErrorResponse "No active token found"
 // @Failure 500 {object} models.ErrorResponse "Server/internal error"
-// @Router /api/v2/users/refreshToken [post]
+// @Router /users/refreshToken [post]
 func (uc *UserController) RefreshUserToken(c *gin.Context) {
 	// Extract the authenticated user's UID from context
 	authUserUID, exists := c.Get("currentUser")
@@ -340,7 +343,65 @@ func (uc *UserController) RefreshUserToken(c *gin.Context) {
 	})
 }
 
-// ListUsers lists existing users
-func (uc *UserController) DeleteUserToken(c *gin.Context) {
+type PaginatedUserResponse models.PaginatedResponse[models.User]
 
+// GetUsersHandler godoc
+// @Summary      Get users
+// @Description  Returns a paginated list of users, with optional filters.
+// @Tags         users
+// @Produce      json
+// @Param        uid        query     string  false  "Filter by UID"
+// @Param        username   query     string  false  "Filter by username"
+// @Param        email      query     string  false  "Filter by email"
+// @Param        is_active  query     bool    false  "Filter by active status"
+// @Param        is_admin   query     bool    false  "Filter by admin user status"
+// @Param        page       query     int     false  "Page number (default 1)"
+// @Param        page_size  query     int     false  "Items per page (default 20)"
+// @Success      200        {object}  PaginatedUserResponse
+// @Failure      500        {object}  models.ErrorResponse "Server-side error"
+// @Router       /users [get]
+func (uc *UserController) GetUsersHandler(db *sqlx.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var filter models.UserFilter
+
+		if uid := c.Query("uid"); uid != "" {
+			filter.UID = &uid
+		}
+		if username := c.Query("username"); username != "" {
+			filter.Username = &username
+		}
+		if email := c.Query("email"); email != "" {
+			filter.Email = &email
+		}
+		if isActive := c.Query("is_active"); isActive != "" {
+			if b, err := strconv.ParseBool(isActive); err == nil {
+				filter.IsActive = &b
+			}
+		}
+		if isAdmin := c.Query("is_admin"); isAdmin != "" {
+			if b, err := strconv.ParseBool(isAdmin); err == nil {
+				filter.IsAdmin = &b
+			}
+		}
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+		filter.Page = page
+		filter.PageSize = pageSize
+
+		users, total, err := models.GetUsers(db, filter)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		totalPages := int(math.Ceil(float64(total) / float64(filter.PageSize)))
+
+		response := PaginatedUserResponse{
+			Items:      users,
+			Total:      int64(total),
+			Page:       filter.Page,
+			TotalPages: totalPages,
+			PageSize:   filter.PageSize,
+		}
+		c.JSON(http.StatusOK, response)
+	}
 }

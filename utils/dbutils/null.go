@@ -319,3 +319,21 @@ func (a *MapAnything) Scan(value interface{}) error {
 
 	return json.Unmarshal(b, &a)
 }
+
+func RawMessageToMap(raw json.RawMessage) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	if len(raw) == 0 {
+		return nil, nil // Or: return map[string]interface{}{}, nil
+	}
+	err := json.Unmarshal(raw, &result)
+	return result, err
+}
+
+// MapToRawMessage converts a map[string]interface{} to json.RawMessage
+func MapToRawMessage(m map[string]interface{}) (json.RawMessage, error) {
+	if m == nil {
+		return nil, nil // or: return json.RawMessage("null"), nil
+	}
+	b, err := json.Marshal(m)
+	return json.RawMessage(b), err
+}

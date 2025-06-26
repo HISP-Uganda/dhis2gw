@@ -3,22 +3,49 @@ package joblog
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/jmoiron/sqlx"
+	log "github.com/sirupsen/logrus"
+	"strings"
 	"time"
 )
 
 type JobLog struct {
-	ID          int64           `db:"id"`
-	Submitted   time.Time       `db:"submitted_at"`
-	Payload     json.RawMessage `db:"payload"`
-	Status      string          `db:"status"`
-	RetryCount  int             `db:"retry_count"`
-	LastAttempt sql.NullTime    `db:"last_attempt_at"`
-	TaskID      sql.NullString  `db:"task_id"`
-	Response    sql.NullString  `db:"response"`
-	Errors      sql.NullString  `db:"errors"` // Optional field for storing error messages
+	ID          int64           `db:"id" json:"id"`
+	Submitted   time.Time       `db:"submitted_at" json:"submitted_at"`
+	Payload     json.RawMessage `db:"payload" swaggertype:"object" json:"payload"`
+	Status      string          `db:"status" json:"status"`
+	RetryCount  int             `db:"retry_count" json:"retry_count"`
+	LastAttempt sql.NullTime    `db:"last_attempt_at" json:"last_attempt"`
+	TaskID      sql.NullString  `db:"task_id" json:"task_id"`
+	Response    sql.NullString  `db:"response" json:"response"`
+	Errors      sql.NullString  `db:"errors" json:"errors"` // Optional field for storing error messages
 
-	db *sqlx.DB // not persisted, for method receivers
+	db *sqlx.DB `json:"-"` // not persisted, for method receivers
+}
+
+// JobLogSwagger is for Swagger documentation only
+type JobLogSwagger struct {
+	ID          int64                  `json:"id" example:"123"`
+	Submitted   time.Time              `json:"submitted_at" example:"2024-06-24T08:00:00Z"`
+	Payload     map[string]interface{} `json:"payload" swaggertype:"object"`
+	Status      string                 `json:"status" example:"SUCCESS"`
+	RetryCount  int                    `json:"retry_count" example:"0"`
+	LastAttempt *time.Time             `json:"last_attempt_at,omitempty" example:"2024-06-24T09:00:00Z"`
+	TaskID      *string                `json:"task_id,omitempty" example:"abc-123"`
+	Response    *string                `json:"response,omitempty" example:"OK"`
+	Errors      *string                `json:"errors,omitempty" example:""`
+}
+
+type JobLogFilter struct {
+	Status        *string    // Filter by status (e.g., "FAILED", "SUCCESS")
+	TaskID        *string    // Filter by TaskID
+	JobID         *int64     // Filter by ID
+	SubmittedAt   *time.Time // Filter by submission date (exact or range)
+	SubmittedFrom *time.Time // Range: submitted after this date
+	SubmittedTo   *time.Time // Range: submitted before this date
+	Page          int        // Page number (1-based)
+	PageSize      int        // Items per page
 }
 
 // New creates a new JobLog with attached db handle.
@@ -163,4 +190,76 @@ func GetByTaskID(db *sqlx.DB, taskID string) (*JobLog, error) {
 	}
 	jl.db = db
 	return &jl, nil
+}
+
+// GetLogs retrieves job logs based on the provided filter criteria.
+func GetLogs(db *sqlx.DB, filter JobLogFilter) ([]JobLog, int, error) {
+	var (
+		logs   []JobLog
+		args   []interface{}
+		where  []string
+		query  = `SELECT * FROM submission_log`
+		countQ = `SELECT COUNT(*) FROM submission_log`
+	)
+
+	// Build WHERE clause dynamically
+	if filter.Status != nil {
+		where = append(where, fmt.Sprintf("status = $%d", len(args)+1))
+		args = append(args, *filter.Status)
+	}
+	if filter.TaskID != nil {
+		where = append(where, fmt.Sprintf("task_id = $%d", len(args)+1))
+		args = append(args, *filter.TaskID)
+	}
+	if filter.JobID != nil {
+		where = append(where, fmt.Sprintf("id = $%d", len(args)+1))
+		args = append(args, *filter.JobID)
+	}
+	if filter.SubmittedAt != nil {
+		where = append(where, fmt.Sprintf("submitted_at = $%d", len(args)+1))
+		args = append(args, *filter.SubmittedAt)
+	}
+	if filter.SubmittedFrom != nil {
+		where = append(where, fmt.Sprintf("submitted_at >= $%d", len(args)+1))
+		args = append(args, *filter.SubmittedFrom)
+	}
+	if filter.SubmittedTo != nil {
+		where = append(where, fmt.Sprintf("submitted_at <= $%d", len(args)+1))
+		args = append(args, *filter.SubmittedTo)
+	}
+
+	if len(where) > 0 {
+		cond := " WHERE " + strings.Join(where, " AND ")
+		query += cond
+		countQ += cond
+	}
+
+	// Pagination defaults
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := filter.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+
+	// Order by latest submitted
+	query += " ORDER BY submitted_at DESC"
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+
+	log.Info("QUERY: ", query, " ARGS: ", args)
+	// Get total count (for pagination UI)
+	var total int
+	if err := db.Get(&total, countQ, args...); err != nil {
+		return nil, 0, err
+	}
+
+	// Get page of logs
+	if err := db.Select(&logs, query, args...); err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
 }

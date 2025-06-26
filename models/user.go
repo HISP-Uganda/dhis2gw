@@ -5,7 +5,9 @@ import (
 	"dhis2gw/db"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"strings"
@@ -41,6 +43,16 @@ type UserInput struct {
 	Telephone   string `json:"telephone" example:"+256700000001"`
 	IsActive    bool   `json:"isActive" example:"true"`
 	IsAdminUser bool   `json:"isAdminUser" example:"false"`
+}
+
+type UserFilter struct {
+	UID      *string
+	Username *string
+	Email    *string
+	IsActive *bool
+	IsAdmin  *bool
+	Page     int
+	PageSize int
 }
 
 type UpdateUserInput struct {
@@ -217,4 +229,69 @@ func GenerateToken() (string, error) {
 
 	// Convert the bytes to a hexadecimal string
 	return hex.EncodeToString(token), nil
+}
+
+// GetUsers based on the provided filter criteria
+func GetUsers(db *sqlx.DB, filter UserFilter) ([]User, int, error) {
+	var (
+		users  []User
+		args   []interface{}
+		where  []string
+		query  = `SELECT * FROM users`
+		countQ = `SELECT COUNT(*) FROM users`
+	)
+
+	// Add filters
+	if filter.UID != nil {
+		where = append(where, fmt.Sprintf("uid = $%d", len(args)+1))
+		args = append(args, *filter.UID)
+	}
+	if filter.Username != nil {
+		where = append(where, fmt.Sprintf("username = $%d", len(args)+1))
+		args = append(args, *filter.Username)
+	}
+	if filter.Email != nil {
+		where = append(where, fmt.Sprintf("email = $%d", len(args)+1))
+		args = append(args, *filter.Email)
+	}
+	if filter.IsActive != nil {
+		where = append(where, fmt.Sprintf("is_active = $%d", len(args)+1))
+		args = append(args, *filter.IsActive)
+	}
+	if filter.IsAdmin != nil {
+		where = append(where, fmt.Sprintf("is_admin_user = $%d", len(args)+1))
+		args = append(args, *filter.IsAdmin)
+	}
+
+	// WHERE clause
+	if len(where) > 0 {
+		clause := " WHERE " + strings.Join(where, " AND ")
+		query += clause
+		countQ += clause
+	}
+
+	// Order and pagination
+	query += " ORDER BY created DESC"
+	page := filter.Page
+	if page < 1 {
+		page = 1
+	}
+	pageSize := filter.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
+
+	// Get total
+	var total int
+	if err := db.Get(&total, countQ, args...); err != nil {
+		return nil, 0, err
+	}
+
+	// Get users
+	if err := db.Select(&users, query, args...); err != nil {
+		return nil, 0, err
+	}
+	return users, total, nil
 }

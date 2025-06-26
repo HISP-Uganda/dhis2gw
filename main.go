@@ -115,6 +115,7 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 
 		userController := &controllers.UserController{}
 		v2.POST("/user", userController.CreateUser)
+		v2.GET("/users", userController.GetUsersHandler(db.GetDB()))
 		v2.GET("/users/:uid", userController.GetUserByUID)
 		v2.PUT("/users/:uid", userController.UpdateUser)
 		v2.POST("/users/getToken", userController.CreateUserToken)
@@ -122,6 +123,12 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 
 		aggregateController := &controllers.AggregateController{}
 		v2.POST("/aggregate", aggregateController.CreateRequest)
+
+		logController := &controllers.LogsController{}
+		v2.GET("/logs/:id", logController.GetLogByIdHandler(db.GetDB()))
+		v2.GET("/logs", logController.GetLogsHandler(db.GetDB()))
+		// reporcess log
+		// v2.POST("/logs/reprocess/:id", logController.ReprocessLogHandler(db.GetDB()))
 	}
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	// Documentation Routes

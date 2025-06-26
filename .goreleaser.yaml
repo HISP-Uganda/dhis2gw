@@ -21,13 +21,11 @@ archives:
       - README.md
       # - db/**/*.sql
       - db/**/*.*
-      - docs/md_docs/**/*
-      - docs/static/**/*
-      - docs/templates/**/*
-      - docs/**/*.json
-      - docs/**/*.yaml
-    exclude:
-      - docs/**/*.go
+      - docs/**/*.*
+      #- docs/static/**/*
+      #- docs/templates/**/*
+      - docs/*.json
+      - docs/*.yaml
 checksum:
   name_template: 'checksums.txt'
 snapshot:

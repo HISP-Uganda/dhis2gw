@@ -31,7 +31,7 @@ type AggregateController struct{}
 // @Success 200 {object} models.AggregateResponse
 // @Failure 400 {object} models.ErrorResponse "Invalid JSON or schema validation failed"
 // @Failure 500 {object} models.ErrorResponse "Server-side error"
-// @Router /api/v2/aggregate [post]
+// @Router /aggregate [post]
 func (a *AggregateController) CreateRequest(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {

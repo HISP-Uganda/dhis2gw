@@ -1,5 +1,72 @@
 basePath: /api/v2
 definitions:
+  controllers.JobLogPaginatedResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/joblog.JobLogSwagger'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 10
+        type: integer
+    type: object
+  controllers.PaginatedUserResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 10
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 10
+        type: integer
+    type: object
+  joblog.JobLogSwagger:
+    properties:
+      errors:
+        example: ""
+        type: string
+      id:
+        example: 123
+        type: integer
+      last_attempt_at:
+        example: "2024-06-24T09:00:00Z"
+        type: string
+      payload:
+        type: object
+      response:
+        example: OK
+        type: string
+      retry_count:
+        example: 0
+        type: integer
+      status:
+        example: SUCCESS
+        type: string
+      submitted_at:
+        example: "2024-06-24T08:00:00Z"
+        type: string
+      task_id:
+        example: abc-123
+        type: string
+    type: object
   models.AggregateRequest:
     properties:
       dataSet:
@@ -64,6 +131,33 @@ definitions:
         example: jdoe
         type: string
     type: object
+  models.User:
+    properties:
+      created:
+        type: string
+      email:
+        type: string
+      firstname:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      is_admin_user:
+        type: boolean
+      lastname:
+        type: string
+      password:
+        type: string
+      telephone:
+        type: string
+      uid:
+        type: string
+      updated:
+        type: string
+      username:
+        type: string
+    type: object
   models.UserCreateResponse:
     properties:
       message:
@@ -126,7 +220,7 @@ info:
   title: DHIS2 Gateway Service
   version: 1.0.1
 paths:
-  /api/v2/aggregate:
+  /aggregate:
     post:
       consumes:
       - application/json
@@ -160,7 +254,140 @@ paths:
       summary: Submit aggregate data request
       tags:
       - aggregate
-  /api/v2/users:
+  /logs:
+    get:
+      description: Returns a paginated list of job logs with optional filters like
+        status, task ID, job ID, and submission date range.
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by task id
+        in: query
+        name: task_id
+        type: string
+      - description: Filter by job id
+        in: query
+        name: job_id
+        type: integer
+      - description: Filter by exact submitted_at (RFC3339)
+        in: query
+        name: submitted_at
+        type: string
+      - description: Submitted after (RFC3339)
+        in: query
+        name: submitted_from
+        type: string
+      - description: Submitted before (RFC3339)
+        in: query
+        name: submitted_to
+        type: string
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20)
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.JobLogPaginatedResponse'
+        "400":
+          description: Invalid query parameters
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Get job logs
+      tags:
+      - logs
+  /logs/{id}:
+    get:
+      description: Get a specific job log entry by its database ID.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Job log entry
+          schema:
+            $ref: '#/definitions/joblog.JobLogSwagger'
+        "404":
+          description: Log not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Get job log by ID
+      tags:
+      - logs
+  /users:
+    get:
+      description: Returns a paginated list of users, with optional filters.
+      parameters:
+      - description: Filter by UID
+        in: query
+        name: uid
+        type: string
+      - description: Filter by username
+        in: query
+        name: username
+        type: string
+      - description: Filter by email
+        in: query
+        name: email
+        type: string
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - description: Filter by admin user status
+        in: query
+        name: is_admin
+        type: boolean
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 20)
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.PaginatedUserResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get users
+      tags:
+      - users
     post:
       consumes:
       - application/json
@@ -193,7 +420,7 @@ paths:
       summary: Create a new user
       tags:
       - users
-  /api/v2/users/{uid}:
+  /users/{uid}:
     put:
       consumes:
       - application/json
@@ -231,7 +458,7 @@ paths:
       summary: Update user details
       tags:
       - users
-  /api/v2/users/getToken:
+  /users/getToken:
     post:
       description: If the user has an active token, it is returned; otherwise a new
         one is created. Requires authentication.
@@ -264,7 +491,7 @@ paths:
       summary: Generate or return a user token
       tags:
       - users
-  /api/v2/users/refreshToken:
+  /users/refreshToken:
     post:
       description: Deactivates the current active token (if any) and generates a new
         one. Requires authentication.

@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type ErrorResponse struct {
 	Error  string      `json:"error" example:"Invalid JSON"`
@@ -15,4 +17,12 @@ type UserTokenResponse struct {
 
 type SuccessResponse struct {
 	Message string `json:"message" example:"User updated successfully"`
+}
+
+type PaginatedResponse[T any] struct {
+	Items      []T   `json:"items"`
+	Total      int64 `json:"total" example:"100"`
+	Page       int   `json:"page" example:"1"`
+	TotalPages int   `json:"total_pages" example:"10"`
+	PageSize   int   `json:"page_size" example:"10"`
 }
