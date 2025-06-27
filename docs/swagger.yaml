@@ -1,5 +1,25 @@
 basePath: /api/v2
 definitions:
+  controllers.CSVMappingsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.Dhis2Mapping'
+        type: array
+      total:
+        example: 100
+        type: integer
+    type: object
+  controllers.ExcelImportResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.Dhis2Mapping'
+        type: array
+      total:
+        example: 100
+        type: integer
+    type: object
   controllers.JobLogPaginatedResponse:
     properties:
       items:
@@ -98,6 +118,31 @@ definitions:
         type: integer
       task_id:
         example: c5265e8f-2f15-4090-b25e-303d748adfce
+        type: string
+    type: object
+  models.Dhis2Mapping:
+    properties:
+      categoryOptionCombo:
+        type: string
+      code:
+        type: string
+      created:
+        type: string
+      dataElement:
+        type: string
+      dataSet:
+        type: string
+      description:
+        type: string
+      dhis2Name:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      uid:
+        type: string
+      updated:
         type: string
     type: object
   models.ErrorResponse:
@@ -342,6 +387,137 @@ paths:
       summary: Get job log by ID
       tags:
       - logs
+  /mappings:
+    get:
+      description: Returns a list of DHIS2 mappings
+      parameters:
+      - description: Filter by code
+        in: query
+        name: code
+        type: string
+      - description: Filter by name
+        in: query
+        name: name
+        type: string
+      - description: Filter by data set
+        in: query
+        name: dataSet
+        type: string
+      - description: Filter by data element
+        in: query
+        name: dataElement
+        type: string
+      - description: Filter by DHIS2 name
+        in: query
+        name: dhis2Name
+        type: string
+      - description: Filter by category option combo
+        in: query
+        name: categoryOptionCombo
+        type: string
+      - description: Filter by UID
+        in: query
+        name: uid
+        type: string
+      - description: Filter by created date (RFC3339 format)
+        in: query
+        name: created
+        type: string
+      - description: Filter by updated date (RFC3339 format)
+        in: query
+        name: updated
+        type: string
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Items per page (default 10)
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Dhis2Mapping'
+            type: array
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Get mappings
+      tags:
+      - mappings
+  /mappings/import/csv:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Imports DHIS2 mappings from a CSV file
+      parameters:
+      - description: CSV file containing DHIS2 mappings
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.ExcelImportResponse'
+        "400":
+          description: Invalid file format
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Import DHIS2 mappings from CSV
+      tags:
+      - mappings
+  /mappings/import/excel:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Imports DHIS2 mappings from an Excel file
+      parameters:
+      - description: Excel file containing DHIS2 mappings
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.CSVMappingsResponse'
+        "400":
+          description: Invalid file format
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Import DHIS2 mappings from Excel
+      tags:
+      - mappings
   /users:
     get:
       description: Returns a paginated list of users, with optional filters.

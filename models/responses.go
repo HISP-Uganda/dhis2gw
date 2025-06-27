@@ -26,3 +26,8 @@ type PaginatedResponse[T any] struct {
 	TotalPages int   `json:"total_pages" example:"10"`
 	PageSize   int   `json:"page_size" example:"10"`
 }
+
+type ImportResponse[T any] struct {
+	Items []T   `json:"items"`
+	Total int64 `json:"total" example:"100"`
+}

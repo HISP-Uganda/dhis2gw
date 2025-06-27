@@ -214,6 +214,215 @@
                 }
             }
         },
+        "/mappings": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Returns a list of DHIS2 mappings",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mappings"
+                ],
+                "summary": "Get mappings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by code",
+                        "name": "code",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by name",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by data set",
+                        "name": "dataSet",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by data element",
+                        "name": "dataElement",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by DHIS2 name",
+                        "name": "dhis2Name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by category option combo",
+                        "name": "categoryOptionCombo",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by UID",
+                        "name": "uid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by created date (RFC3339 format)",
+                        "name": "created",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by updated date (RFC3339 format)",
+                        "name": "updated",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 10)",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Dhis2Mapping"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/mappings/import/csv": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Imports DHIS2 mappings from a CSV file",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mappings"
+                ],
+                "summary": "Import DHIS2 mappings from CSV",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV file containing DHIS2 mappings",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ExcelImportResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid file format",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/mappings/import/excel": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Imports DHIS2 mappings from an Excel file",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "mappings"
+                ],
+                "summary": "Import DHIS2 mappings from Excel",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Excel file containing DHIS2 mappings",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.CSVMappingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid file format",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "description": "Returns a paginated list of users, with optional filters.",
@@ -497,6 +706,36 @@
         }
     },
     "definitions": {
+        "controllers.CSVMappingsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Dhis2Mapping"
+                    }
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                }
+            }
+        },
+        "controllers.ExcelImportResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Dhis2Mapping"
+                    }
+                },
+                "total": {
+                    "type": "integer",
+                    "example": 100
+                }
+            }
+        },
         "controllers.JobLogPaginatedResponse": {
             "type": "object",
             "properties": {
@@ -634,6 +873,44 @@
                 "task_id": {
                     "type": "string",
                     "example": "c5265e8f-2f15-4090-b25e-303d748adfce"
+                }
+            }
+        },
+        "models.Dhis2Mapping": {
+            "type": "object",
+            "properties": {
+                "categoryOptionCombo": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "dataElement": {
+                    "type": "string"
+                },
+                "dataSet": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dhis2Name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "updated": {
+                    "type": "string"
                 }
             }
         },

@@ -129,6 +129,12 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 		v2.GET("/logs", logController.GetLogsHandler(db.GetDB()))
 		// reporcess log
 		// v2.POST("/logs/reprocess/:id", logController.ReprocessLogHandler(db.GetDB()))
+
+		mappingsController := &controllers.MappingController{}
+		v2.GET("/mappings", mappingsController.GetMappingsHandler())
+		v2.POST("/mappings/import/csv", mappingsController.ImportCSVHandler)
+		v2.POST("/mappings/import/excel", mappingsController.ImportExcelHandler)
+
 	}
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	// Documentation Routes
