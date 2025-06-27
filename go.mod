@@ -24,6 +24,7 @@ require (
 	github.com/swaggo/swag v1.16.4
 	github.com/twpayne/go-geom v1.6.1
 	github.com/xeipuuv/gojsonschema v1.2.0
+	github.com/xuri/excelize/v2 v2.9.1
 	golang.org/x/crypto v0.39.0
 )
 
@@ -72,7 +73,6 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xuri/efp v0.0.1 // indirect
-	github.com/xuri/excelize/v2 v2.9.1 // indirect
 	github.com/xuri/nfp v0.0.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
