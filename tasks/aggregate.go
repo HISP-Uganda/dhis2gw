@@ -55,8 +55,24 @@ func (p *AggregateTaskPayload) Process(ctx context.Context) error {
 	payload := p.Payload.ToDHIS2AggregatePayload()
 
 	jl, err := joblog.Load(db.GetDB(), p.LogID)
-	if err == nil && jl.RetryCount > 0 {
-		_ = jl.IncrementRetry()
+	if err != nil {
+		log.Printf("Failed to load job log: %v", err)
+		return err
+	}
+
+	if jl.RetryCount > 0 {
+		if err := jl.IncrementRetry(); err != nil {
+			log.Printf("Failed to increment retry count: %v", err)
+		}
+	} else {
+		dhis2Payload, marshalErr := json.Marshal(payload)
+		if marshalErr != nil {
+			log.Printf("Failed to marshal DHIS2 payload: %v", marshalErr)
+			return marshalErr
+		}
+		if err := jl.UpdateDhis2Payload(string(dhis2Payload)); err != nil {
+			log.Printf("Failed to update submission log with DHIS2 payload: %v", err)
+		}
 	}
 
 	resp, err := dhis2Client.SendAggregateDataValues(ctx, &payload)
@@ -81,13 +97,10 @@ func (p *AggregateTaskPayload) Process(ctx context.Context) error {
 		}
 	}
 
-	if jl != nil {
-		// Save errors (if any) and always update the status
-		_ = jl.UpdateStatusAndErrors(status, errors)
+	_ = jl.UpdateStatusAndErrors(status, errors)
 
-		if config.DHIS2GWConf.API.SaveResponse == "true" && dhis2Resp != "" {
-			_ = jl.UpdateResponse(dhis2Resp)
-		}
+	if config.DHIS2GWConf.API.SaveResponse == "true" && dhis2Resp != "" {
+		_ = jl.UpdateResponse(dhis2Resp)
 	}
 
 	log.WithFields(log.Fields{"ImportResponse": resp}).Info("Aggregate Import Response")

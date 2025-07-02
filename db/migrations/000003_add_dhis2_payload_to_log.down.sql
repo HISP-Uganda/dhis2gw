@@ -1,0 +1,1 @@
+ALTER TABLE submission_log DROP COLUMN dhis2_payload;

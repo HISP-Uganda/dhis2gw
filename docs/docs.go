@@ -77,6 +77,112 @@ const docTemplate = `{
                 }
             }
         },
+        "/aggregate/reenqueue/batch": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Re-enqueues multiple tasks from the dead or retry queue by their IDs. Requires ` + "`" + `Authorization",
+                "tags": [
+                    "aggregate"
+                ],
+                "summary": "Re-enqueue multiple aggregate tasks by IDs",
+                "parameters": [
+                    {
+                        "description": "Batch re-enqueue request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controllers.BatchReEnqueueRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.BatchReEnqueueResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/aggregate/reenqueue/{task_id}": {
+            "post": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Re-enqueues a task from the dead or retry queue by its ID. Requires ` + "`" + `Authorization: Token",
+                "tags": [
+                    "aggregate"
+                ],
+                "summary": "Re-enqueue a failed aggregate task",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID to re-enqueue",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Queue to re-enqueue from (default: dead)",
+                        "name": "queue",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TaskReEnqueueResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/logs": {
             "get": {
                 "security": [
@@ -167,6 +273,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/logs/purge": {
+            "delete": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Deletes all submission logs older than the specified date.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Purge submission logs by date",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cutoff date in RFC3339 format (e.g., 2024-06-01T00:00:00Z)",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Purge result",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid date format",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/logs/{id}": {
             "get": {
                 "security": [
@@ -199,6 +354,53 @@ const docTemplate = `{
                         "description": "Job log entry",
                         "schema": {
                             "$ref": "#/definitions/joblog.JobLogSwagger"
+                        }
+                    },
+                    "404": {
+                        "description": "Log not found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Deletes a specific job log entry by its database ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "logs"
+                ],
+                "summary": "Delete a job log by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Log ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deletion successful",
+                        "schema": {
+                            "$ref": "#/definitions/models.SuccessResponse"
                         }
                     },
                     "404": {
@@ -708,6 +910,22 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "controllers.BatchReEnqueueRequest": {
+            "type": "object",
+            "properties": {
+                "queue": {
+                    "description": "e.g., \"dead\" or \"retry\"",
+                    "type": "string"
+                },
+                "task_ids": {
+                    "description": "task IDs to re-enqueue",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "controllers.CSVMappingsResponse": {
             "type": "object",
             "properties": {
@@ -878,6 +1096,32 @@ const docTemplate = `{
                 }
             }
         },
+        "models.BatchReEnqueueResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "[]"
+                    ]
+                },
+                "failed": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "queue": {
+                    "type": "string",
+                    "example": "default"
+                },
+                "reEnqueued": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        },
         "models.Dhis2Mapping": {
             "type": "object",
             "properties": {
@@ -932,6 +1176,15 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "User updated successfully"
+                }
+            }
+        },
+        "models.TaskReEnqueueResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Task re-enqueued successfully"
                 }
             }
         },

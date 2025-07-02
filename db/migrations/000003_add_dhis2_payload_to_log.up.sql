@@ -1,0 +1,1 @@
+ALTER TABLE submission_log ADD COLUMN dhis2_payload TEXT;

@@ -31,3 +31,13 @@ type ImportResponse[T any] struct {
 	Items []T   `json:"items"`
 	Total int64 `json:"total" example:"100"`
 }
+
+type BatchReEnqueueResponse struct {
+	Queue      string   `json:"queue" example:"default"`
+	ReEnqueued int      `json:"reEnqueued" example:"0"`
+	Failed     int      `json:"failed" example:"0"`
+	Errors     []string `json:"errors,omitempty" example:"[]"`
+}
+type TaskReEnqueueResponse struct {
+	Message string `json:"message" example:"Task re-enqueued successfully"`
+}

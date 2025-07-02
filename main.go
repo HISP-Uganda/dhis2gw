@@ -123,10 +123,14 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 
 		aggregateController := &controllers.AggregateController{}
 		v2.POST("/aggregate", aggregateController.CreateRequest)
+		v2.GET("/aggregate/reenqueue/:task_id", aggregateController.ReEnqueueAggregateTask)
+		v2.POST("/aggregate/reenqueue/batch", aggregateController.BatchReEnqueueAggregateTasksByIDs)
 
 		logController := &controllers.LogsController{}
 		v2.GET("/logs/:id", logController.GetLogByIdHandler(db.GetDB()))
 		v2.GET("/logs", logController.GetLogsHandler(db.GetDB()))
+		v2.DELETE("/logs/:id", logController.DeleteSubmissionLogHandler(db.GetDB()))
+		v2.DELETE("/logs/purge", logController.PurgeSubmissionLogsByDateHandler(db.GetDB()))
 		// reporcess log
 		// v2.POST("/logs/reprocess/:id", logController.ReprocessLogHandler(db.GetDB()))
 

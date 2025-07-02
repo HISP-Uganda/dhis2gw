@@ -1,5 +1,16 @@
 basePath: /api/v2
 definitions:
+  controllers.BatchReEnqueueRequest:
+    properties:
+      queue:
+        description: e.g., "dead" or "retry"
+        type: string
+      task_ids:
+        description: task IDs to re-enqueue
+        items:
+          type: string
+        type: array
+    type: object
   controllers.CSVMappingsResponse:
     properties:
       items:
@@ -120,6 +131,24 @@ definitions:
         example: c5265e8f-2f15-4090-b25e-303d748adfce
         type: string
     type: object
+  models.BatchReEnqueueResponse:
+    properties:
+      errors:
+        example:
+        - '[]'
+        items:
+          type: string
+        type: array
+      failed:
+        example: 0
+        type: integer
+      queue:
+        example: default
+        type: string
+      reEnqueued:
+        example: 0
+        type: integer
+    type: object
   models.Dhis2Mapping:
     properties:
       categoryOptionCombo:
@@ -156,6 +185,12 @@ definitions:
     properties:
       message:
         example: User updated successfully
+        type: string
+    type: object
+  models.TaskReEnqueueResponse:
+    properties:
+      message:
+        example: Task re-enqueued successfully
         type: string
     type: object
   models.UpdateUserInput:
@@ -299,6 +334,73 @@ paths:
       summary: Submit aggregate data request
       tags:
       - aggregate
+  /aggregate/reenqueue/{task_id}:
+    post:
+      description: 'Re-enqueues a task from the dead or retry queue by its ID. Requires
+        `Authorization: Token'
+      parameters:
+      - description: Task ID to re-enqueue
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: 'Queue to re-enqueue from (default: dead)'
+        in: query
+        name: queue
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TaskReEnqueueResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Re-enqueue a failed aggregate task
+      tags:
+      - aggregate
+  /aggregate/reenqueue/batch:
+    post:
+      description: Re-enqueues multiple tasks from the dead or retry queue by their
+        IDs. Requires `Authorization
+      parameters:
+      - description: Batch re-enqueue request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.BatchReEnqueueRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.BatchReEnqueueResponse'
+        "400":
+          description: Invalid request body
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Task not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Re-enqueue multiple aggregate tasks by IDs
+      tags:
+      - aggregate
   /logs:
     get:
       description: Returns a paginated list of job logs with optional filters like
@@ -358,6 +460,35 @@ paths:
       tags:
       - logs
   /logs/{id}:
+    delete:
+      description: Deletes a specific job log entry by its database ID.
+      parameters:
+      - description: Log ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion successful
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "404":
+          description: Log not found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Delete a job log by ID
+      tags:
+      - logs
     get:
       description: Get a specific job log entry by its database ID.
       parameters:
@@ -385,6 +516,36 @@ paths:
       - BasicAuth: []
       - TokenAuth: []
       summary: Get job log by ID
+      tags:
+      - logs
+  /logs/purge:
+    delete:
+      description: Deletes all submission logs older than the specified date.
+      parameters:
+      - description: Cutoff date in RFC3339 format (e.g., 2024-06-01T00:00:00Z)
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Purge result
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Invalid date format
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Purge submission logs by date
       tags:
       - logs
   /mappings:

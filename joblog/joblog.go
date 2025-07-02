@@ -11,15 +11,16 @@ import (
 )
 
 type JobLog struct {
-	ID          int64           `db:"id" json:"id"`
-	Submitted   time.Time       `db:"submitted_at" json:"submitted_at"`
-	Payload     json.RawMessage `db:"payload" swaggertype:"object" json:"payload"`
-	Status      string          `db:"status" json:"status"`
-	RetryCount  int             `db:"retry_count" json:"retry_count"`
-	LastAttempt sql.NullTime    `db:"last_attempt_at" json:"last_attempt"`
-	TaskID      sql.NullString  `db:"task_id" json:"task_id"`
-	Response    sql.NullString  `db:"response" json:"response"`
-	Errors      sql.NullString  `db:"errors" json:"errors"` // Optional field for storing error messages
+	ID           int64           `db:"id" json:"id"`
+	Submitted    time.Time       `db:"submitted_at" json:"submitted_at"`
+	Payload      json.RawMessage `db:"payload" swaggertype:"object" json:"payload"`
+	Status       string          `db:"status" json:"status"`
+	Dhis2Payload sql.NullString  `db:"dhis2_payload" swaggertype:"object" json:"dhis2_payload,omitempty"` // Optional field for DHIS2 payload
+	RetryCount   int             `db:"retry_count" json:"retry_count"`
+	LastAttempt  sql.NullTime    `db:"last_attempt_at" json:"last_attempt"`
+	TaskID       sql.NullString  `db:"task_id" json:"task_id"`
+	Response     sql.NullString  `db:"response" json:"response"`
+	Errors       sql.NullString  `db:"errors" json:"errors"` // Optional field for storing error messages
 
 	db *sqlx.DB `json:"-"` // not persisted, for method receivers
 }
@@ -71,7 +72,7 @@ func New(db *sqlx.DB, payload interface{}) (*JobLog, error) {
 func Load(db *sqlx.DB, id int64) (*JobLog, error) {
 	var jl JobLog
 	err := db.Get(&jl, `
-		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response, errors
+		SELECT id, submitted_at, payload, status, retry_count, last_attempt_at, task_id, response, errors, dhis2_payload
 		FROM submission_log WHERE id = $1`, id)
 	if err != nil {
 		return nil, err
@@ -135,6 +136,18 @@ func (jl *JobLog) UpdateResponse(response string) error {
 	)
 	if err == nil {
 		jl.Response = sql.NullString{String: response, Valid: true}
+	}
+	return err
+}
+
+// UpdateDhis2Payload updates the job log with a DHIS2 payload.
+func (jl *JobLog) UpdateDhis2Payload(dhis2Payload string) error {
+	_, err := jl.db.Exec(
+		`UPDATE submission_log SET dhis2_payload = $1 WHERE id = $2`,
+		dhis2Payload, jl.ID,
+	)
+	if err == nil {
+		jl.Dhis2Payload = sql.NullString{String: dhis2Payload, Valid: true}
 	}
 	return err
 }

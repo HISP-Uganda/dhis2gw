@@ -4,6 +4,7 @@ import (
 	"dhis2gw/joblog"
 	"dhis2gw/models"
 	"dhis2gw/utils/dbutils"
+	"fmt"
 	"github.com/HISP-Uganda/go-dhis2-sdk/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -168,3 +169,79 @@ func (l *LogsController) GetLogByIdHandler(db *sqlx.DB) gin.HandlerFunc {
 //		c.JSON(http.StatusOK, gin.H{"message": "Job reprocessed successfully", "job_id": jl.ID})
 //	}
 //}
+
+// DeleteSubmissionLogHandler godoc
+// @Summary      Delete a job log by ID
+// @Description  Deletes a specific job log entry by its database ID.
+// @Tags         logs
+// @Produce      json
+// @Security     BasicAuth
+// @Security     TokenAuth
+// @Param        id   path      int  true   "Log ID"
+// @Success      200  {object}  models.SuccessResponse "Deletion successful"
+// @Failure      404  {object} models.ErrorResponse "Log not found"
+// @Failure      500  {object}  models.ErrorResponse "Server-side error"
+// @Router       /logs/{id} [delete]
+func (l *LogsController) DeleteSubmissionLogHandler(db *sqlx.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid log ID"})
+			return
+		}
+
+		res, err := db.Exec("DELETE FROM submission_log WHERE id = $1", id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete log"})
+			return
+		}
+
+		rowsAffected, _ := res.RowsAffected()
+		if rowsAffected == 0 {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Log not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("Deleted %d log(s)", rowsAffected)})
+	}
+}
+
+// PurgeSubmissionLogsByDateHandler godoc
+// @Summary   	Purge submission logs by date
+// @Description  Deletes all submission logs older than the specified date.
+// @Tags         logs
+// @Produce      json
+// @Security     BasicAuth
+// @Security     TokenAuth
+// @Param        date  query     string  true   "Cutoff date in RFC3339 format (e.g., 2024-06-01T00:00:00Z)"
+// @Success      200   {object}  models.SuccessResponse "Purge result"
+// @Failure      400   {object}  models.ErrorResponse "Invalid date format"
+// @Failure      500   {object}  models.ErrorResponse "Server-side error"
+// @Router       /logs/purge [delete]
+func (l *LogsController) PurgeSubmissionLogsByDateHandler(db *sqlx.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		dateStr := c.Query("date")
+		if dateStr == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing 'date' query parameter"})
+			return
+		}
+
+		// Try to parse the date. Accepts RFC3339 (e.g., "2024-06-01T00:00:00Z")
+		cutoff, err := time.Parse(time.RFC3339, dateStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid 'date' format, use RFC3339"})
+			return
+		}
+
+		res, err := db.Exec(`DELETE FROM submission_log WHERE submitted_at < $1`, cutoff)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete logs"})
+			return
+		}
+		rows, _ := res.RowsAffected()
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("Deleted %d logs older than %s", rows, cutoff.Format(time.RFC3339)),
+		})
+	}
+}
