@@ -128,6 +128,11 @@ func (m *MappingController) ImportExcelHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse Excel", "details": err.Error()})
 		return
 	}
+	importError := models.BulkInsertMappings(records)
+	if importError != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to import mappings", "details": importError.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"total": len(records), "records": records})
 }
 
@@ -162,6 +167,11 @@ func (m *MappingController) ImportCSVHandler(c *gin.Context) {
 	records, err := models.ParseDhis2MappingCSV(file)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse CSV", "details": err.Error()})
+		return
+	}
+	importError := models.BulkInsertMappings(records)
+	if importError != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to import mappings", "details": importError.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"total": len(records), "records": records})

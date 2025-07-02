@@ -43,10 +43,13 @@ type MappingsFilter struct {
 }
 
 const insertDhis2MappingSQL = `
-INSERT INTO dhis2_mappings(name, description, dataset, dataelement, dhis2_name, 
+INSERT INTO dhis2_mappings(code, name, description, dataset, dataelement, dhis2_name, 
     category_option_combo, created, updated)
-VALUES(:name, :description, :data_set, :data_element, :dhis2_name, 
-    :category_option_combo, NOW(), NOW()) RETURNING id`
+VALUES(:code, :name, :description, :data_set, :data_element, :dhis2_name, 
+    :category_option_combo, NOW(), NOW()) 
+ON CONFLICT (code, dataset)
+DO NOTHING 
+RETURNING id`
 
 // Insert adds a new Dhis2Mapping
 func (d *Dhis2Mapping) Insert() (int64, error) {

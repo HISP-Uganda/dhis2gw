@@ -1,0 +1,1 @@
+ALTER TABLE dhis2_mappings DROP CONSTRAINT unique_code_dataset;
