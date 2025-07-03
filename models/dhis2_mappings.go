@@ -45,7 +45,7 @@ type MappingsFilter struct {
 const insertDhis2MappingSQL = `
 INSERT INTO dhis2_mappings(code, name, description, dataset, dataelement, dhis2_name, 
     category_option_combo, created, updated)
-VALUES(:code, :name, :description, :data_set, :data_element, :dhis2_name, 
+VALUES(:code, :name, :description, :dataset, :dataelement, :dhis2_name, 
     :category_option_combo, NOW(), NOW()) 
 ON CONFLICT (code, dataset)
 DO NOTHING 
@@ -67,8 +67,8 @@ func (d *Dhis2Mapping) Insert() (int64, error) {
 func (d *Dhis2Mapping) Update() error {
 	dbConn := db.GetDB()
 	_, err := dbConn.NamedExec(`
-    UPDATE dhis2_mappings SET name = :name, description = :description, dataset = :data_set, 
-    dataelement = :data_element, dhis2_name = :dhis2_name, category_option_combo = :category_option_combo, 
+    UPDATE dhis2_mappings SET name = :name, description = :description, dataset = :dataset, 
+    dataelement = :dataelement, dhis2_name = :dhis2_name, category_option_combo = :category_option_combo, 
     updated = NOW() WHERE uid = :uid`, d)
 	if err != nil {
 		log.WithError(err).Error("Failed to update Dhis2Mapping")
