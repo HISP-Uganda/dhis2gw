@@ -1,0 +1,40 @@
+database:
+  uri: "postgres://username:password@localhost/dhis2gw?sslmode=disable"
+  db_host: "localhost"
+  db_port: "5432"
+  db_username: "postgres"
+  db_password: "postgres"
+
+server:
+  host: "localhost"
+  http_port: 9090
+  max_retries: 3
+  max_concurrent: 8
+  sync_on: true
+  request_process_interval: 5
+  fake_sync_to_base_dhis2: true
+  logdir: "/tmp"
+  migrations_dir: "file:///usr/share/dhis2gw/db/migrations"
+  templates_directory: "/usr/share/dhis2gw/docs/templates"
+  docs_directory: "/usr/share/dhis2gw/docs/md_docs"
+  static_directory: "/usr/share/dhis2gw/docs/static"
+
+api:
+  dhis2_base_url: "https://play.im.dhis2.org/stable-2-42-1/api/"
+  dhis2_user: "admin"
+  dhis2_password: "district"
+  dhis2_pat: ""
+  dhis2_auth_method: "Basic"
+  mapping_scheme: "UID"
+  cc_dhis2_hierarchy_servers: "ncdch_OU"
+  cc_dhis2_servers: "test238_OU,test240_OU"
+  cc_dhis2_create_servers: "test240_OU"
+  cc_dhis2_ougroup_add_servers: "test240_OU_GroupAdd,test238_OU_GroupAdd"
+  dhis2_district_oulevel_name: "District/City"
+  dhis2_tree_ids: "akV6429SUqu"
+  metadata_batch_size: 50
+  dhis2_facility_level: 8
+  # retry_cron_expression: "*/5 * * * *"
+  retry_cron_expression: "*/4 * * * *"
+  dhis2_ou_mflid_attribute_id: "Hb4BF0KTbZ1"
+  authtoken: "ABC"
