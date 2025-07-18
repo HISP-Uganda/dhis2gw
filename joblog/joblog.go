@@ -39,14 +39,14 @@ type JobLogSwagger struct {
 }
 
 type JobLogFilter struct {
-	Status        *string    // Filter by status (e.g., "FAILED", "SUCCESS")
-	TaskID        *string    // Filter by TaskID
-	JobID         *int64     // Filter by ID
-	SubmittedAt   *time.Time // Filter by submission date (exact or range)
-	SubmittedFrom *time.Time // Range: submitted after this date
-	SubmittedTo   *time.Time // Range: submitted before this date
-	Page          int        // Page number (1-based)
-	PageSize      int        // Items per page
+	Status        *string   // Filter by status (e.g., "FAILED", "SUCCESS")
+	TaskID        *string   // Filter by TaskID
+	JobID         *int64    // Filter by ID
+	SubmittedAt   time.Time // Filter by submission date (exact or range)
+	SubmittedFrom time.Time // Range: submitted after this date
+	SubmittedTo   time.Time // Range: submitted before this date
+	Page          int       // Page number (1-based)
+	PageSize      int       // Items per page
 }
 
 // New creates a new JobLog with attached db handle.
@@ -206,7 +206,7 @@ func GetByTaskID(db *sqlx.DB, taskID string) (*JobLog, error) {
 }
 
 // GetLogs retrieves job logs based on the provided filter criteria.
-func GetLogs(db *sqlx.DB, filter JobLogFilter) ([]JobLog, int, error) {
+func GetLogs(db *sqlx.DB, filter *JobLogFilter) ([]JobLog, int, error) {
 	var (
 		logs   []JobLog
 		args   []interface{}
@@ -228,17 +228,17 @@ func GetLogs(db *sqlx.DB, filter JobLogFilter) ([]JobLog, int, error) {
 		where = append(where, fmt.Sprintf("id = $%d", len(args)+1))
 		args = append(args, *filter.JobID)
 	}
-	if filter.SubmittedAt != nil {
+	if &filter.SubmittedAt != nil && !filter.SubmittedAt.IsZero() {
 		where = append(where, fmt.Sprintf("submitted_at = $%d", len(args)+1))
-		args = append(args, *filter.SubmittedAt)
+		args = append(args, filter.SubmittedAt.Format("2006-01-02"))
 	}
-	if filter.SubmittedFrom != nil {
+	if &filter.SubmittedFrom != nil && !filter.SubmittedFrom.IsZero() {
 		where = append(where, fmt.Sprintf("submitted_at >= $%d", len(args)+1))
-		args = append(args, *filter.SubmittedFrom)
+		args = append(args, filter.SubmittedFrom.Format("2006-01-02"))
 	}
-	if filter.SubmittedTo != nil {
+	if &filter.SubmittedTo != nil && !filter.SubmittedTo.IsZero() {
 		where = append(where, fmt.Sprintf("submitted_at <= $%d", len(args)+1))
-		args = append(args, *filter.SubmittedTo)
+		args = append(args, filter.SubmittedTo.Format("2006-01-02"))
 	}
 
 	if len(where) > 0 {
@@ -262,7 +262,7 @@ func GetLogs(db *sqlx.DB, filter JobLogFilter) ([]JobLog, int, error) {
 	query += " ORDER BY submitted_at DESC"
 	query += fmt.Sprintf(" LIMIT %d OFFSET %d", pageSize, offset)
 
-	log.Info("QUERY: ", query, " ARGS: ", args)
+	log.Info("QUERY: ", query, " ARGS: ", args, " FILTER: ", filter)
 	// Get total count (for pagination UI)
 	var total int
 	if err := db.Get(&total, countQ, args...); err != nil {

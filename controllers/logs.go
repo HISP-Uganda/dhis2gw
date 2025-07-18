@@ -54,18 +54,18 @@ func (l *LogsController) GetLogsHandler(db *sqlx.DB) gin.HandlerFunc {
 			}
 		}
 		if submitted := c.Query("submitted_at"); submitted != "" {
-			if t, err := time.Parse(time.RFC3339, submitted); err == nil {
-				filter.SubmittedAt = &t
+			if t, err := time.Parse("2006-01-02", submitted); err == nil {
+				filter.SubmittedAt = t
 			}
 		}
 		if submittedFrom := c.Query("submitted_from"); submittedFrom != "" {
-			if t, err := time.Parse(time.RFC3339, submittedFrom); err == nil {
-				filter.SubmittedFrom = &t
+			if t2, err := time.Parse("2006-01-02", submittedFrom); err == nil {
+				filter.SubmittedFrom = t2
 			}
 		}
 		if submittedTo := c.Query("submitted_to"); submittedTo != "" {
-			if t, err := time.Parse(time.RFC3339, submittedTo); err == nil {
-				filter.SubmittedTo = &t
+			if t, err := time.Parse("2006-01-02", submittedTo); err == nil {
+				filter.SubmittedTo = t
 			}
 		}
 		// Pagination params
@@ -75,7 +75,7 @@ func (l *LogsController) GetLogsHandler(db *sqlx.DB) gin.HandlerFunc {
 		filter.PageSize = pageSize
 
 		// Get logs and total count
-		logs, total, err := joblog.GetLogs(db, filter)
+		logs, total, err := joblog.GetLogs(db, &filter)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

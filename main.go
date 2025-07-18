@@ -11,6 +11,7 @@ import (
 	"dhis2gw/tasks"
 	"fmt"
 	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gomarkdown/markdown"
 	swaggerfiles "github.com/swaggo/files"
@@ -94,6 +95,12 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"}, // your frontend
+		AllowMethods:     []string{"GET", "POST"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
 
 	funcMap := template.FuncMap{
 		"safeHTML": func(s string) template.HTML {
