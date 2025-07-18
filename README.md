@@ -1,5 +1,6 @@
 # DHIS2 Gateway Service (dhis2gw)
-
+## Introduction
+This integration gateway is part of the comprehensive initiative to link and interoperate government M&E systems with partner-specific data systems. The gateway is built on the [DHIS2](https://dhis2.org) architecture, a flexible and open-source platform that supports government digital transformation initiatives. This gateway is built and supported by [HISP Uganda](https://hispuganda.org), a non-profit organization that supports sustainable information systems in Africa and beyond.
 ## Overview
 
 **dhis2gw** is a robust gateway application for sending aggregate and tracker data to DHIS2 from third-party systems. Built with Go and Gin, it leverages asynchronous processing (Asynq) and PostgreSQL for task management and logging. It also provides a KivyMD desktop UI for administrators to monitor, requeue, and manage tasks.
