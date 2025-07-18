@@ -29,6 +29,7 @@ archives:
       #- docs/templates/**/*
       - docs/*.json
       - docs/*.yaml
+      - docs/*.yml
 checksum:
   name_template: 'checksums.txt'
 snapshot:

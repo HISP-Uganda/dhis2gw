@@ -157,17 +157,15 @@ Create the dhis2gw database if not present:
 ### 📥 Step 1: Download the Debian Package
 
 ```bash
- wget https://github.com/HISP-Uganda/dhis2gw/releases/download/vX.Y.Z/dhis2gw_X.Y.Z_amd64.deb
+ wget https://github.com/HISP-Uganda/dhis2gw/releases/download/v1.0.0/dhis2gw_1.0.0_amd64.deb
 ```
-
-Replace `X.Y.Z` with the latest version.
 
 ---
 
 ### 📦 Step 2: Install the Package
 
 ```bash
-sudo dpkg -i dhis2gw_X.Y.Z_amd64.deb
+sudo dpkg -i dhis2gw_1.0.0_amd64.deb
 sudo apt-get install -f   # resolve deps if needed
 ```
 
@@ -207,7 +205,7 @@ journalctl -u dhis2gw -f
 ### 🔄 Upgrade
 
 ```bash
-sudo dpkg -i dhis2gw_X.Y.Z_amd64.deb
+sudo dpkg -i dhis2gw_1.0.0_amd64.deb
 ```
 
 ---
@@ -221,11 +219,11 @@ sudo apt remove dhis2gw
 ---
 
 ### Current Stable versions
-👉 [Debian Package](https://github.com/HISP-Uganda/dhis2gw/releases)
+👉 [Debian Package v1.0.0](https://github.com/HISP-Uganda/dhis2gw/releases/download/v1.0.0/dhis2gw_1.0.0_amd64.deb)
 
-👉 [Linux Binary v1.0.1](https://github.com/HISP-Uganda/dhis2gw/releases)
+👉 [Linux Binary v1.0.0](https://github.com/HISP-Uganda/dhis2gw/releases/download/v1.0.0/dhis2gw_1.0.0_linux_amd64.tar.gz)
 
-👉 [MacOs Binary](https://github.com/HISP-Uganda/dhis2gw/releases)
+👉 [MacOs Binary v1.0.0](https://github.com/HISP-Uganda/dhis2gw/releases/download/v1.0.0/dhis2gw_1.0.0_darwin_amd64.tar.gz)
 
 ---
 
