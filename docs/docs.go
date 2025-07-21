@@ -229,13 +229,13 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Submitted after (RFC3339)",
-                        "name": "submitted_from",
+                        "name": "from_date",
                         "in": "query"
                     },
                     {
                         "type": "string",
                         "description": "Submitted before (RFC3339)",
-                        "name": "submitted_to",
+                        "name": "to_date",
                         "in": "query"
                     },
                     {

@@ -96,10 +96,11 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 
 	router := gin.Default()
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:5173"}, // your frontend
-		AllowMethods:     []string{"GET", "POST"},
+		AllowOrigins:     []string{"*"}, // your frontend
+		AllowMethods:     []string{"GET", "POST", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
 	}))
 
 	funcMap := template.FuncMap{
@@ -110,7 +111,8 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 	tmpl := template.Must(template.New("").Funcs(funcMap).ParseGlob(
 		config.DHIS2GWConf.Server.TemplatesDirectory + "/*"))
 	router.SetHTMLTemplate(tmpl)
-	router.Static("/static", config.DHIS2GWConf.Server.StaticDirectory)
+	staticDir := config.DHIS2GWConf.Server.StaticDirectory
+	router.Static("/static", staticDir)
 
 	docs.SwaggerInfo.BasePath = "/api/v2"
 
@@ -148,6 +150,7 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 
 	}
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+	router.StaticFile("/logs-viewer", fmt.Sprintf("%s/logs_viewer.html", staticDir))
 	// Documentation Routes
 	// Home Route
 	router.GET("/", func(c *gin.Context) {

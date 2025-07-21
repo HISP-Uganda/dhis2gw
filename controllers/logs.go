@@ -29,8 +29,8 @@ type JobLogPaginatedResponse models.PaginatedResponse[joblog.JobLogSwagger]
 // @Param        task_id       query     string  false  "Filter by task id"
 // @Param        job_id        query     integer false  "Filter by job id"
 // @Param        submitted_at  query     string  false  "Filter by exact submitted_at (RFC3339)"
-// @Param        submitted_from query    string  false  "Submitted after (RFC3339)"
-// @Param        submitted_to  query     string  false  "Submitted before (RFC3339)"
+// @Param        from_date query    string  false  "Submitted after (RFC3339)"
+// @Param        to_date  query     string  false  "Submitted before (RFC3339)"
 // @Param        page          query     int     false  "Page number (default 1)"
 // @Param        page_size     query     int     false  "Items per page (default 20)"
 // @Success 200 {object}  JobLogPaginatedResponse
@@ -58,12 +58,12 @@ func (l *LogsController) GetLogsHandler(db *sqlx.DB) gin.HandlerFunc {
 				filter.SubmittedAt = t
 			}
 		}
-		if submittedFrom := c.Query("submitted_from"); submittedFrom != "" {
+		if submittedFrom := c.Query("from_date"); submittedFrom != "" {
 			if t2, err := time.Parse("2006-01-02", submittedFrom); err == nil {
 				filter.SubmittedFrom = t2
 			}
 		}
-		if submittedTo := c.Query("submitted_to"); submittedTo != "" {
+		if submittedTo := c.Query("to_date"); submittedTo != "" {
 			if t, err := time.Parse("2006-01-02", submittedTo); err == nil {
 				filter.SubmittedTo = t
 			}

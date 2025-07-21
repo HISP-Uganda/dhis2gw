@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Log Viewer – Material UI, Dark Mode, Toasts</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script>
+        window.APP_CONFIG = {
+            API_BASE: "http://localhost:9090/api/v2"
+        };
+    </script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap" rel="stylesheet">
+    <meta name="color-scheme" content="dark light">
+    <style>
+        :root {
+            --primary: #1976d2;
+            --primary-light: #2196f3;
+            --primary-dark: #115293;
+            --error: #e53935;
+            --success: #43a047;
+            --warn: #ffa726;
+            --bg: #f5f7fa;
+            --card: #fff;
+            --border-radius: 12px;
+            --shadow: 0 2px 12px #0001;
+            --shadow-table: 0 4px 20px #1976d210, 0 1.5px 6px #0001;
+            --table-header-bg: #e7f1fa;
+            --table-header-border: #d1e3f6;
+            --row-hover: #e8f2fc;
+            --action-hover: #ecf7fd;
+            --action-hover-del: #ffe6e6;
+            --transition: all .17s cubic-bezier(.4,0,.2,1);
+            --toast-bg: #222e;
+            --toast-color: #fff;
+            --toggle-bg: #e3f1fb;
+            --toggle-checked: #1976d2;
+        }
+        [data-theme=dark] {
+            --primary: #90caf9;
+            --primary-light: #1976d2;
+            --primary-dark: #0b2c47;
+            --bg: #171e26;
+            --card: #202833;
+            --table-header-bg: #242e3b;
+            --table-header-border: #2c3d4f;
+            --row-hover: #232b34;
+            --action-hover: #2c3747;
+            --action-hover-del: #472222;
+            --toast-bg: #272d36ee;
+            --toast-color: #fafbfc;
+            --toggle-bg: #232f3c;
+            --toggle-checked: #42a5f5;
+        }
+        html, body { background: var(--bg);}
+        body { font-family: 'Roboto', Arial, sans-serif; margin: 0; }
+        #app { min-height: 100vh; }
+        /* ... All CSS as in the previous answer ... (unchanged, includes everything) ... */
+        /* Paste the complete CSS from previous message here for full fidelity */
+        /* For brevity, omitted in this comment, but in your file, keep all CSS! */
+        /* If you want the ZIP, ask and I'll send a download link. */
+        /* ... */
+        /* (CSS exactly as in the previous full HTML posted above) */
+        .container {
+            max-width: 1250px;
+            margin: 36px auto 30px auto;
+            background: var(--card);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 36px 32px 32px 32px;
+            position: relative;
+            transition: background .22s;
+        }
+        h2 {
+            font-weight: 500;
+            font-size: 2.1rem;
+            margin-bottom: 26px;
+            letter-spacing: -.5px;
+            color: var(--primary-dark);
+            transition: color .2s;
+        }
+        .bulk-bar {
+            margin: 10px 0 22px 0;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            background: #f6fafd;
+            border-radius: var(--border-radius);
+            box-shadow: 0 1.5px 6px #1976d210, 0 1px 2px #0001;
+            padding: 12px 16px;
+            min-height: 58px;
+            border: 1.5px solid #e3eaf2;
+            transition: var(--transition);
+        }
+        [data-theme=dark] .bulk-bar {
+            background: #232b37;
+            border-color: #27344a;
+            box-shadow: 0 2px 10px #0005;
+        }
+        .bulk-bar button {
+            min-width: 142px;
+            margin-right: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            border: none;
+            border-radius: 7px;
+            box-shadow: 0 1px 2px #1976d215;
+            padding: 9px 0;
+            cursor: pointer;
+            transition: background .18s, box-shadow .18s, opacity .15s;
+            opacity: 0.93;
+            outline: none;
+        }
+        .bulk-bar button:focus { box-shadow: 0 0 0 2px #1976d249; opacity: 1;}
+        .bulk-bar button[disabled] { opacity: 0.5; cursor: not-allowed;}
+        .bulk-bar .material-icons { font-size: 18px; vertical-align:-3px;}
+        .bulk-bar .selected-info {
+            margin-left: 18px; color: #444; font-size: 1rem;
+            letter-spacing: 0.01em;
+        }
+        .bulk-bar .clear-link {
+            margin-left: 10px; font-size: 13px; color: #1976d2;
+            text-decoration: underline; cursor:pointer;
+            transition: color .12s;
+        }
+        .bulk-bar .clear-link:hover { color: #115293; }
+        [data-theme=dark] .bulk-bar .selected-info { color: #ccd5e0; }
+        [data-theme=dark] .bulk-bar .clear-link { color: #90caf9; }
+        table {
+            width: 100%; border-collapse: collapse;
+            margin-top: 10px;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background: var(--card);
+            box-shadow: var(--shadow-table);
+            position: relative;
+            font-size: 1.01rem;
+        }
+        th, td {
+            padding: 12px 10px;
+            border-bottom: 1.1px solid #e6eaf1;
+            transition: var(--transition);
+            vertical-align: middle;
+        }
+        th {
+            background: var(--table-header-bg);
+            font-weight: 500;
+            color: #1976d2;
+            font-size: 1rem;
+            letter-spacing: .02em;
+            border-bottom: 2.1px solid var(--table-header-border);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            transition: var(--transition);
+        }
+        [data-theme=dark] th { color: #90caf9; }
+        td {
+            background: #fff;
+            word-break: break-word;
+            max-width: 390px;
+            transition: var(--transition);
+        }
+        [data-theme=dark] td { background: #222d39; color: #e7f6ff;}
+        tr:hover td { background: var(--row-hover); }
+        tr:last-child td { border-bottom: none; }
+        td:last-child, th:last-child { text-align: center; }
+        .msg-snippet {
+            font-family: monospace;
+            font-size: 0.98rem;
+            letter-spacing: .01em;
+            padding: 2px 4px;
+            border-radius: 7px;
+            background: #f2f7fd;
+            transition: background 0.18s, color .12s;
+            cursor: pointer; color: var(--primary);
+            user-select: text;
+            outline: none;
+        }
+        .msg-snippet:focus, .msg-snippet:hover { background: #e3f1fb; color: #0a5aad; text-decoration: underline;}
+        [data-theme=dark] .msg-snippet { background: #20324d; color: #82b8ff;}
+        .field-created { color: #7c7c7c; font-size: 14px; white-space: nowrap; }
+        [data-theme=dark] .field-created { color: #a7b8d1;}
+        .icon-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 5px 9px;
+            border-radius: 50%;
+            transition: background .18s;
+            margin: 0 3px;
+            vertical-align: middle;
+            outline: none;
+        }
+        .icon-btn .material-icons { font-size: 22px; }
+        .icon-btn.restart:hover, .icon-btn.restart:focus { background: var(--action-hover);}
+        .icon-btn.delete:hover, .icon-btn.delete:focus { background: var(--action-hover-del);}
+        .restart .material-icons { color: var(--primary);}
+        .delete .material-icons { color: var(--error);}
+        [data-theme=dark] .icon-btn.restart .material-icons { color: #1976d2;}
+        [data-theme=dark] .icon-btn.delete .material-icons { color: #ff7676;}
+        .loading-overlay {
+            position: absolute;
+            left:0; right:0; top:0; bottom:0;
+            background: rgba(245,247,250,0.73);
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: #1976d2;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            pointer-events: all;
+            transition: var(--transition);
+        }
+        [data-theme=dark] .loading-overlay { background: rgba(24,29,39,0.8);}
+        .checkbox-cell, .checkbox-header {
+            width: 36px; text-align: center;
+        }
+        .checkbox-cell input[type="checkbox"], .checkbox-header input[type="checkbox"] {
+            width: 18px; height: 18px; accent-color: #1976d2;
+            border-radius: 3px;
+            box-shadow: 0 0 1.5px #1976d275;
+            cursor: pointer;
+            transition: box-shadow .14s;
+            outline: none;
+            vertical-align: middle;
+        }
+        .checkbox-header input[type="checkbox"]:hover,
+        .checkbox-cell input[type="checkbox"]:hover,
+        .checkbox-header input[type="checkbox"]:focus,
+        .checkbox-cell input[type="checkbox"]:focus
+        { box-shadow: 0 0 0 2px #2196f375;}
+        .loading { color: #1976d2; text-align: center; margin: 36px 0 30px 0; font-size: 1.25rem;}
+        [data-theme=dark] .loading { color: #90caf9;}
+        .error {
+            color: #fff;
+            background: var(--error);
+            border-radius: var(--border-radius);
+            padding: 12px 22px;
+            margin: 14px 0 16px 0;
+            font-size: 1rem;
+            letter-spacing: .01em;
+            box-shadow: 0 2px 8px #e5393530;
+            text-align: center;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        .pagination {
+            margin: 18px 0 0 0; user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            min-width: 36px; margin: 0 1px; font-size: 1.01rem; border: none;
+            border-radius: 8px; background: none; color: var(--primary-dark); font-weight: 500;
+            transition: background .18s, color .18s;
+            padding: 6px 0;
+            cursor: pointer;
+            outline: none;
+        }
+        .pagination button:focus { box-shadow: 0 0 0 2px #2196f3cc; }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed;}
+        .pagination button.active, .pagination button:focus {
+            background: var(--primary-light);
+            color: #fff;
+            outline: none;
+        }
+        .pagination span { margin-left: 12px; color: #888; font-size: 1rem;}
+        [data-theme=dark] .pagination span { color: #90caf9;}
+        .filters {
+            margin-bottom: 18px;
+            display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap;
+            background: #f6f8fa;
+            padding: 18px 14px 10px 14px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 5px #0001;
+        }
+        .filters label {
+            font-size: 15px; color: #333; font-weight: 500;
+            margin-right: 2px;
+            letter-spacing: .02em;
+            min-width: 85px;
+            display: flex; flex-direction: column;
+        }
+        .filters input[type="text"],
+        .filters input[type="date"],
+        .filters select {
+            border: 1.5px solid #d6e2f5;
+            background: #fff;
+            border-radius: 7px;
+            padding: 7px 8px;
+            margin-top: 3px;
+            font-size: 1rem;
+            transition: border-color .18s;
+            outline: none;
+            color: #222;
+            box-shadow: 0 1px 2px #1976d21a;
+        }
+        [data-theme=dark] .filters {
+            background: #232b37;
+            box-shadow: 0 2px 12px #0005;
+        }
+        [data-theme=dark] .filters label { color: #90caf9;}
+        [data-theme=dark] .filters input,
+        [data-theme=dark] .filters select {
+            background: #202833; color: #e7f6ff; border-color: #26344a;
+        }
+        .filters input:focus, .filters select:focus { border-color: var(--primary);}
+        .filters button {
+            border: none;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 500;
+            padding: 9px 20px;
+            border-radius: 7px;
+            font-size: 1rem;
+            box-shadow: 0 1px 2px #1976d215;
+            margin-top: 0;
+            cursor: pointer;
+            transition: background .18s, box-shadow .18s;
+        }
+        .filters button[type="button"] {
+            background: #eee;
+            color: #1976d2;
+            margin-left: 0;
+            font-weight: 500;
+            border: 1.5px solid #dbe6f5;
+        }
+        [data-theme=dark] .filters button[type="button"] {
+            background: #26344a; color: #90caf9; border-color: #23324a;
+        }
+        .filters button:hover:not([disabled]) { background: var(--primary-light);}
+        .filters button[type="button"]:hover { background: #e3eaf5;}
+        .filters .material-icons { vertical-align: middle; margin-right: 3px; font-size: 20px; }
+        /* LOGIN SCREEN */
+        .auth-dialog {
+            background: rgba(33, 150, 243, 0.12);
+            position: fixed; inset: 0; z-index: 3000;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.25s;
+        }
+        .mat-login-card {
+            min-width: 330px;
+            max-width: 96vw;
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 38px #1976d247, 0 2px 12px #0001;
+            padding: 40px 38px 28px 38px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            animation: fadeIn .22s;
+        }
+        [data-theme=dark] .mat-login-card {
+            background: #232d3a;
+            color: #d4ebff;
+            box-shadow: 0 10px 36px #000c;
+        }
+        .mat-login-header {
+            text-align: center;
+            margin-bottom: 28px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .mat-login-icon {
+            font-size: 54px;
+            color: var(--primary);
+            margin-bottom: 4px;
+            animation: popin 0.4s;
+        }
+        @keyframes popin { from { opacity: 0; transform: scale(0.7);} to { opacity: 1; transform: scale(1);} }
+        .mat-login-title {
+            font-size: 1.35rem;
+            font-weight: 500;
+            color: var(--primary-dark);
+            letter-spacing: 0.04em;
+        }
+        [data-theme=dark] .mat-login-title { color: #90caf9;}
+        .mat-login-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        .mat-input {
+            border: 1.7px solid #d6e2f5;
+            background: #f7fafd;
+            border-radius: 7px;
+            padding: 13px 13px;
+            font-size: 1.12rem;
+            color: #222;
+            outline: none;
+            transition: border-color .18s, box-shadow .18s;
+            box-shadow: 0 1px 3px #1976d211;
+        }
+        .mat-input:focus {
+            border-color: var(--primary);
+            background: #e3f1fb;
+        }
+        [data-theme=dark] .mat-input {
+            background: #192636;
+            color: #d8eafd;
+            border-color: #27344a;
+        }
+        .mat-btn {
+            border: none;
+            background: var(--primary);
+            color: #fff;
+            font-weight: 500;
+            border-radius: 7px;
+            font-size: 1.12rem;
+            box-shadow: 0 1px 2px #1976d215;
+            padding: 13px 0;
+            cursor: pointer;
+            transition: background .18s, box-shadow .18s;
+            margin-top: 5px;
+            margin-bottom: 2px;
+            letter-spacing: 0.02em;
+        }
+        .mat-btn:hover,
+        .mat-btn:focus {
+            background: var(--primary-light);
+        }
+        .mat-login-footer {
+            margin-top: 18px;
+            font-size: 0.98rem;
+            color: #888;
+            text-align: center;
+            letter-spacing: 0.01em;
+        }
+        [data-theme=dark] .mat-login-footer { color: #90caf9;}
+        /* Dialogs */
+        .dialog-backdrop {
+            position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(33, 150, 243, 0.08);
+            display: flex; align-items: flex-start; justify-content: center; z-index: 2000;
+            pointer-events: all;
+        }
+        [data-theme=dark] .dialog-backdrop { background: rgba(24,29,39,0.36);}
+        .dialog-box, .confirm-box {
+            margin-top: 95px;
+            background: #fff;
+            border-radius: var(--border-radius);
+            max-width: 700px;
+            max-height: 80vh;
+            box-shadow: 0 8px 40px #1976d240, 0 2px 18px #0001;
+            overflow: auto; position: relative;
+            padding: 32px 30px 20px 30px;
+            animation: fadeIn 0.18s;
+        }
+        [data-theme=dark] .dialog-box,
+        [data-theme=dark] .confirm-box {
+            background: #263044;
+            color: #f5faff;
+            box-shadow: 0 10px 38px #000b;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(18px);} to { opacity: 1; transform: none;}}
+        .dialog-box pre { background: #f4f8fb; padding: 13px; border-radius: 7px; font-size: 15px; overflow-x: auto; font-family: 'Roboto Mono', monospace;}
+        [data-theme=dark] .dialog-box pre { background: #1c2738; color: #caf1ff;}
+        .dialog-close {
+            position: absolute; top: 12px; right: 12px; background: none; border: none;
+            font-size: 20px; color: #aaa; cursor: pointer; transition: color .16s;
+        }
+        .dialog-close:hover { color: var(--primary);}
+        .dialog-box h3, .confirm-box h3 { font-weight: 500; font-size: 1.15rem; color: #1976d2; margin-top:0; margin-bottom: 18px; letter-spacing: .02em;}
+        [data-theme=dark] .dialog-box h3, [data-theme=dark] .confirm-box h3 { color: #90caf9;}
+        .dialog-box .esc-hint { text-align:right; color:#999; font-size:13px; margin-top:12px;}
+        [data-theme=dark] .dialog-box .esc-hint { color: #b7dafb;}
+        .confirm-icon {
+            font-size: 36px;
+            margin-bottom: 18px;
+            color: var(--primary);
+            background: #e3f1fb;
+            border-radius: 50%;
+            padding: 12px;
+            display: inline-block;
+        }
+        [data-theme=dark] .confirm-icon { background: #293a51;}
+        .confirm-error { color: var(--error); background: #ffebee;}
+        [data-theme=dark] .confirm-error { background: #402026;}
+        .confirm-msg {
+            margin: 0 0 26px 0;
+            color: #444;
+            font-size: 1.08rem;
+            line-height: 1.6;
+            text-align: center;
+        }
+        [data-theme=dark] .confirm-msg { color: #e0efff;}
+        .confirm-actions {
+            text-align: center;
+            margin-top: 14px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        .confirm-btn {
+            min-width: 90px;
+            border: none;
+            border-radius: 7px;
+            padding: 10px 24px;
+            font-size: 1rem;
+            font-weight: 500;
+            box-shadow: 0 1px 2px #1976d215;
+            cursor: pointer;
+            transition: background .18s, box-shadow .18s;
+        }
+        .confirm-btn.confirm {
+            background: var(--primary);
+            color: #fff;
+        }
+        .confirm-btn.confirm:hover { background: var(--primary-light);}
+        .confirm-btn.cancel {
+            background: #eee;
+            color: #1976d2;
+            border: 1.5px solid #dbe6f5;
+        }
+        .confirm-btn.cancel:hover { background: #e3eaf5;}
+        [data-theme=dark] .confirm-btn.cancel {
+            background: #26344a;
+            color: #90caf9;
+            border-color: #23324a;
+        }
+        /* TOASTS */
+        .toast-stack {
+            position: fixed;
+            top: 28px;
+            right: 30px;
+            z-index: 5000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: none;
+            animation: fadeIn .18s;
+        }
+        .toast {
+            display: flex; align-items: center; gap: 10px;
+            min-width: 220px; max-width: 330px;
+            background: var(--toast-bg);
+            color: var(--toast-color);
+            border-radius: 11px;
+            box-shadow: 0 4px 24px #111a, 0 1px 4px #111a;
+            font-size: 1rem;
+            font-weight: 500;
+            padding: 16px 22px;
+            animation: slideToast .44s cubic-bezier(.33,1.5,.68,1) both;
+            opacity: 0.97;
+            pointer-events: all;
+            cursor: pointer;
+            border-left: 6px solid var(--primary);
+            transition: background .14s, color .14s;
+        }
+        .toast-success { border-color: var(--success);}
+        .toast-error   { border-color: var(--error);}
+        .toast-warn    { border-color: var(--warn);}
+        .toast .material-icons { font-size: 21px; }
+        @keyframes slideToast {
+            from { opacity: 0; transform: translateY(-40px) scale(.9);}
+            to   { opacity: 0.97; transform: none;}
+        }
+        /* Dark mode toggle */
+        .dark-toggle {
+            position: absolute;
+            top: 22px; right: 28px;
+            display: flex; align-items: center; gap: 8px;
+            user-select: none;
+            z-index: 15;
+        }
+        .dark-toggle label {
+            display: flex; align-items: center; gap: 5px;
+            font-weight: 500;
+            font-size: 1.02rem;
+            color: var(--primary-dark);
+            letter-spacing: .01em;
+            cursor: pointer;
+            transition: color .17s;
+        }
+        .dark-toggle input[type="checkbox"] {
+            appearance: none;
+            width: 38px; height: 22px;
+            background: var(--toggle-bg);
+            border-radius: 13px;
+            position: relative;
+            outline: none; margin: 0 3px 0 0;
+            box-shadow: 0 2px 6px #0001;
+            cursor: pointer;
+            transition: background .17s;
+            border: 1.5px solid #bed2e5;
+        }
+        .dark-toggle input[type="checkbox"]:checked {
+            background: var(--toggle-checked);
+            border-color: var(--primary-dark);
+        }
+        .dark-toggle input[type="checkbox"]::after {
+            content: '';
+            display: block;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            position: absolute;
+            left: 1.8px; top: 1.2px;
+            transition: left .17s, background .14s;
+            box-shadow: 0 1.5px 5px #0002;
+        }
+        .dark-toggle input[type="checkbox"]:checked::after {
+            left: 16px;
+            background: #eaf6ff;
+        }
+        .dark-toggle .material-icons {
+            font-size: 20px;
+            vertical-align: middle;
+            color: var(--primary-dark);
+            opacity: 0.85;
+            transition: color .15s;
+        }
+        [data-theme=dark] .dark-toggle label { color: #fff; }
+        [data-theme=dark] .dark-toggle .material-icons { color: #fff; }
+        @media (max-width: 700px) {
+            .mat-login-card { padding: 24px 7vw 16px 7vw; }
+            .mat-login-header { margin-bottom: 18px; }
+            .dark-toggle { top: 14px; right: 10px;}
+        }
+        @media (max-width: 850px) {
+            .container { padding: 20px 3vw; }
+            .dialog-box, .confirm-box { max-width: 96vw;}
+            .filters { flex-direction: column; gap: 10px;}
+            .pagination { flex-direction: column; align-items: flex-start;}
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div
+            class="dark-toggle"
+            v-if="!authDialog"
+            style="position:fixed;top:22px;right:28px;z-index:99;box-shadow:0 1.5px 10px #0002;padding:8px 12px;border-radius:12px;background:var(--card);">
+        <label style="cursor:pointer;display:flex;align-items:center;gap:7px;">
+            <input type="checkbox" v-model="isDark" @change="updateTheme(isDark)">
+            <span class="material-icons">{{ isDark ? 'dark_mode' : 'light_mode' }}</span>
+            <span>{{ isDark ? 'Dark' : 'Light' }} Mode</span>
+        </label>
+    </div>
+</div>
+<script type="module">
+    const API_BASE = window.APP_CONFIG?.API_BASE || 'http://localhost:9090/api/v2';
+    const { createApp, ref, computed, watch, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            // --- Core state ---
+            const logs = ref([]);
+            const total = ref(0);
+            const page = ref(1);
+            const size = ref(10);
+            const loading = ref(false);
+            const error = ref('');
+            const authDialog = ref(true);
+            const username = ref('');
+            const password = ref('');
+            const encodedCreds = ref('');
+            const maxPage = computed(() => Math.max(1, Math.ceil(total.value / size.value)));
+            // Filters
+            const fromDate = ref('');
+            const toDate = ref('');
+            const status = ref('');
+            const taskId = ref('');
+            const statusOptions = ref([
+                "OK",
+                "active",
+                "archived",
+                "completed",
+                "failed",
+                "pending",
+                "queued",
+                "retry",
+                "scheduled",
+                "succeeded",
+            ]);
+            // Payload dialog
+            const showPayloadDialog = ref(false);
+            const payloadDialogTitle = ref('');
+            const payloadDialogContent = ref('');
+            // Confirmation
+            const confirmDialog = ref(false);
+            const confirmType = ref("");
+            const confirmLog = ref(null);
+            const confirmAction = ref(null);
+            // Multi-select
+            const selected = ref(new Set());
+            const allChecked = computed(() =>
+                logs.value.length > 0 && logs.value.every(l => selected.value.has(l.id))
+            );
+            const someChecked = computed(() =>
+                logs.value.some(l => selected.value.has(l.id)) && !allChecked.value
+            );
+            function toggleSelectAll(ev) {
+                if (ev.target.checked) {
+                    logs.value.forEach(l => selected.value.add(l.id));
+                } else {
+                    logs.value.forEach(l => selected.value.delete(l.id));
+                }
+            }
+            function toggleSelectOne(log) {
+                if (selected.value.has(log.id)) selected.value.delete(log.id);
+                else selected.value.add(log.id);
+            }
+            function clearSelected() { selected.value.clear(); }
+            function showConfirm(type, log, action) {
+                confirmType.value = type;
+                confirmLog.value = log;
+                confirmAction.value = action;
+                confirmDialog.value = true;
+            }
+            function closeConfirm() {
+                confirmDialog.value = false;
+                confirmType.value = "";
+                confirmLog.value = null;
+                confirmAction.value = null;
+            }
+            function doConfirm() {
+                if (typeof confirmAction.value === "function") confirmAction.value();
+                closeConfirm();
+            }
+            function showBulkConfirm(type, action) {
+                confirmType.value = type;
+                confirmLog.value = { ids: Array.from(selected.value) };
+                confirmAction.value = action;
+                confirmDialog.value = true;
+            }
+
+            // ESC key for payload dialog
+            const handleEsc = (e) => {
+                if (showPayloadDialog.value && (e.key === "Escape" || e.key === "Esc")) {
+                    closePayloadDialog();
+                }
+            };
+            watch(showPayloadDialog, (open) => {
+                if (open) window.addEventListener('keydown', handleEsc);
+                else window.removeEventListener('keydown', handleEsc);
+            });
+
+            watch(size, () => { page.value = 1; fetchLogs(); });
+            watch([logs, page], () => {
+                selected.value = new Set([...selected.value].filter(id => logs.value.find(l => l.id === id)));
+            });
+
+            // Auth
+            const submitAuth = (e) => {
+                e.preventDefault();
+                if (!username.value || !password.value) {
+                    error.value = "Username and password required.";
+                    return;
+                }
+                encodedCreds.value = btoa(`${username.value}:${password.value}`);
+                authDialog.value = false;
+                fetchLogs();
+            };
+
+            async function authFetch(url, options = {}) {
+                options.headers = options.headers || {};
+                options.headers['Authorization'] = 'Basic ' + encodedCreds.value;
+                return fetch(url, options);
+            }
+            function buildQuery() {
+                const params = new URLSearchParams();
+                params.append('page', page.value);
+                params.append('page_size', size.value);
+                if (fromDate.value) params.append('from_date', fromDate.value);
+                if (toDate.value) params.append('to_date', toDate.value);
+                if (status.value) params.append('status', status.value);
+                if (taskId.value) params.append('task_id', taskId.value.trim());
+                return params.toString();
+            }
+            const fetchLogs = async () => {
+                loading.value = true;
+                error.value = '';
+                try {
+                    const res = await authFetch(`${API_BASE}/logs?${buildQuery()}`);
+                    if (res.status === 401) throw new Error('Unauthorized: check username/password');
+                    if (!res.ok) throw new Error('Failed to fetch logs');
+                    const data = await res.json();
+                    logs.value = data.items || [];
+                    total.value = data.total || logs.value.length;
+                } catch (e) {
+                    error.value = e.message;
+                    if (e.message.startsWith('Unauthorized')) {
+                        authDialog.value = true;
+                        password.value = '';
+                    }
+                } finally {
+                    loading.value = false;
+                }
+            };
+            const restartLog = async (id) => {
+                loading.value = true;
+                error.value = '';
+                try {
+                    const res = await authFetch(`${API_BASE}/logs/${id}/restart`, { method: 'POST' });
+                    if (res.status === 401) throw new Error('Unauthorized: check username/password');
+                    if (!res.ok) throw new Error('Failed to restart log');
+                    toast("Log restarted!", "success");
+                    await fetchLogs();
+                } catch (e) {
+                    error.value = e.message;
+                    toast("Restart failed: "+e.message, "error");
+                    loading.value = false;
+                }
+            };
+            const deleteLog = async (id) => {
+                loading.value = true;
+                error.value = '';
+                try {
+                    const res = await authFetch(`${API_BASE}/logs/${id}`, { method: 'DELETE' });
+                    if (res.status === 401) throw new Error('Unauthorized: check username/password');
+                    if (!res.ok) throw new Error('Failed to delete log');
+                    toast("Log deleted.", "success");
+                    await fetchLogs();
+                } catch (e) {
+                    error.value = e.message;
+                    toast("Delete failed: "+e.message, "error");
+                    loading.value = false;
+                }
+            };
+            async function bulkRestart() {
+                const ids = Array.from(selected.value);
+                if (!ids.length) return;
+                loading.value = true;
+                error.value = '';
+                let failed = [];
+                for (const id of ids) {
+                    try {
+                        const res = await authFetch(`${API_BASE}/logs/${id}/restart`, { method: 'POST' });
+                        if (!res.ok) failed.push(id);
+                    } catch {
+                        failed.push(id);
+                    }
+                }
+                await fetchLogs();
+                clearSelected();
+                if (failed.length) {
+                    error.value = `Failed to restart: ${failed.join(', ')}`;
+                    toast("Some logs failed to restart.", "warn");
+                } else {
+                    toast("All selected logs restarted.", "success");
+                }
+            }
+            async function bulkDelete() {
+                const ids = Array.from(selected.value);
+                if (!ids.length) return;
+                loading.value = true;
+                error.value = '';
+                let failed = [];
+                for (const id of ids) {
+                    try {
+                        const res = await authFetch(`${API_BASE}/logs/${id}`, { method: 'DELETE' });
+                        if (!res.ok) failed.push(id);
+                    } catch {
+                        failed.push(id);
+                    }
+                }
+                await fetchLogs();
+                clearSelected();
+                if (failed.length) {
+                    error.value = `Failed to delete: ${failed.join(', ')}`;
+                    toast("Some logs failed to delete.", "warn");
+                } else {
+                    toast("All selected logs deleted.", "success");
+                }
+            }
+            const gotoPage = (newPage) => {
+                if (newPage < 1 || newPage > maxPage.value) return;
+                page.value = newPage;
+                fetchLogs();
+            };
+            const pageNumbers = computed(() => {
+                let pages = [];
+                let start = Math.max(1, page.value - 2);
+                let end = Math.min(maxPage.value, start + 4);
+                if (end - start < 4) start = Math.max(1, end - 4);
+                for (let i = start; i <= end; i++) pages.push(i);
+                return pages;
+            });
+            const snippet = (val) => {
+                if (!val) return '';
+                let str = (typeof val === 'string') ? val : JSON.stringify(val);
+                return str.length > 35 ? str.slice(0, 35) + '…' : str;
+            };
+            const openPayloadDialog = (field, value) => {
+                if (!value) return;
+                let content = '';
+                if (typeof value === 'string') {
+                    try {
+                        const parsed = JSON.parse(value);
+                        content = JSON.stringify(parsed, null, 2);
+                    } catch {
+                        content = value;
+                    }
+                } else {
+                    content = JSON.stringify(value, null, 2);
+                }
+                payloadDialogTitle.value = field;
+                payloadDialogContent.value = content;
+                showPayloadDialog.value = true;
+            };
+            const closePayloadDialog = () => showPayloadDialog.value = false;
+            const formatDate = (dt) => {
+                if (!dt) return '';
+                let date = typeof dt === 'string' ? new Date(dt) : dt;
+                if (isNaN(date)) return dt;
+                return date.toLocaleString();
+            };
+            const applyFilters = () => {
+                page.value = 1;
+                fetchLogs();
+            };
+            const clearFilters = () => {
+                fromDate.value = '';
+                toDate.value = '';
+                status.value = '';
+                taskId.value = '';
+                page.value = 1;
+                fetchLogs();
+            };
+            watch(page, fetchLogs);
+
+            // --- DARK MODE ---
+            const isDark = ref(false);
+            const updateTheme = (dark) => {
+                document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+                isDark.value = dark;
+                localStorage.setItem('logviewer-dark', dark ? '1' : '');
+            };
+            onMounted(() => {
+                const system = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const stored = localStorage.getItem('logviewer-dark');
+                updateTheme(stored === '1' || (stored === null && system));
+            });
+
+            // --- TOAST NOTIFICATIONS ---
+            const toasts = ref([]);
+            let toastSeed = 0;
+            function toast(msg, type='success') {
+                const id = ++toastSeed;
+                toasts.value.push({ id, msg, type });
+                setTimeout(() => { toasts.value = toasts.value.filter(t => t.id !== id); }, 3500);
+            }
+
+            // --- DETAILS DIALOG ---
+            const showDetailsDialog = ref(false);
+            const detailsDialogFields = ref({});
+            const openDetailsDialog = (log) => {
+                detailsDialogFields.value = {
+                    retry_count: log.retry_count ?? '-',
+                    task_id: log.task_id.String ?? '-',
+                    last_attempt_at: log.last_attempt_at ? formatDate(log.last_attempt_at) : '-',
+                    errors: log.errors ?? '-',
+                };
+                showDetailsDialog.value = true;
+            };
+            const closeDetailsDialog = () => showDetailsDialog.value = false;
+            // ESC close for details dialog
+            const handleDetailsEsc = (e) => {
+                if (showDetailsDialog.value && (e.key === "Escape" || e.key === "Esc")) {
+                    closeDetailsDialog();
+                }
+            };
+            watch(showDetailsDialog, (open) => {
+                if (open) window.addEventListener('keydown', handleDetailsEsc);
+                else window.removeEventListener('keydown', handleDetailsEsc);
+            });
+
+            return {
+                logs, total, page, size, loading, error, fetchLogs,
+                restartLog, deleteLog, authDialog, username, password, submitAuth, maxPage,
+                gotoPage, pageNumbers, snippet, showPayloadDialog, payloadDialogContent,
+                payloadDialogTitle, openPayloadDialog, closePayloadDialog, formatDate,
+                fromDate, toDate, status, statusOptions, taskId, applyFilters, clearFilters,
+                confirmDialog, confirmType, confirmLog, showConfirm, closeConfirm, doConfirm,
+                selected, allChecked, someChecked, toggleSelectAll, toggleSelectOne, clearSelected,
+                showBulkConfirm, bulkRestart, bulkDelete,
+                // Extra polish
+                isDark, updateTheme, toasts,
+                // Details dialog
+                showDetailsDialog, detailsDialogFields, openDetailsDialog, closeDetailsDialog,
+            };
+        },
+        template: `
+        <div>
+          <!-- Dark mode toggle -->
+          <div class="dark-toggle" v-if="!authDialog">
+            <label>
+              <input type="checkbox" v-model="isDark" @change="updateTheme(isDark)">
+              <span class="material-icons">{{ isDark ? 'dark_mode' : 'light_mode' }}</span>
+              {{ isDark ? 'Dark' : 'Light' }} Mode
+            </label>
+          </div>
+          <!-- Toasts -->
+          <div class="toast-stack" v-if="toasts.length">
+            <div v-for="t in toasts" :key="t.id" class="toast" :class="{
+              'toast-success': t.type==='success',
+              'toast-error': t.type==='error',
+              'toast-warn': t.type==='warn'
+            }">
+              <span class="material-icons" v-if="t.type==='success'">check_circle</span>
+              <span class="material-icons" v-else-if="t.type==='error'">error</span>
+              <span class="material-icons" v-else>info</span>
+              {{ t.msg }}
+            </div>
+          </div>
+          <!-- Login -->
+          <div v-if="authDialog" class="auth-dialog">
+            <form @submit="submitAuth" autocomplete="on" class="mat-login-card">
+              <div class="mat-login-header">
+                <span class="material-icons mat-login-icon">lock</span>
+                <span class="mat-login-title">Secure Log In</span>
+              </div>
+              <div class="mat-login-fields">
+                <input
+                  v-model="username"
+                  type="text"
+                  placeholder="Username"
+                  autocomplete="username"
+                  required
+                  class="mat-input"
+                />
+                <input
+                  v-model="password"
+                  type="password"
+                  placeholder="Password"
+                  autocomplete="current-password"
+                  required
+                  class="mat-input"
+                />
+              </div>
+              <button type="submit" class="mat-btn">Login</button>
+              <div v-if="error" class="error" style="margin-top:18px;">{{ error }}</div>
+              <div class="mat-login-footer">Log Viewer &copy; 2024</div>
+            </form>
+          </div>
+          <!-- Confirm dialog -->
+          <div v-if="confirmDialog" class="dialog-backdrop" @click.self="closeConfirm">
+            <div class="confirm-box">
+              <button class="dialog-close" @click="closeConfirm">&times;</button>
+              <div style="text-align:center;">
+                <span class="material-icons confirm-icon"
+                  :class="{'confirm-error': confirmType==='delete' || confirmType==='delete-bulk'}"
+                  v-if="confirmType==='delete' || confirmType==='delete-bulk'"
+                >delete</span>
+                <span class="material-icons confirm-icon" v-else>refresh</span>
+                <h3>
+                  {{
+                    (confirmType==='delete' || confirmType==='delete-bulk') ? 'Delete Log(s)' : 'Restart Log(s)'
+                  }}
+                </h3>
+                <div class="confirm-msg" v-if="confirmType==='delete' || confirmType==='delete-bulk'">
+                  <template v-if="confirmLog && confirmLog.ids">
+                    Are you sure you want to <b>permanently delete</b> these logs?
+                    <div style="margin:10px 0;color:#1976d2;">IDs: {{ confirmLog.ids.join(', ') }}</div>
+                    This action cannot be undone.
+                  </template>
+                  <template v-else>
+                    Are you sure you want to <b>permanently delete</b> log <b>#{{ confirmLog && confirmLog.id }}</b>?<br>This action cannot be undone.
+                  </template>
+                </div>
+                <div class="confirm-msg" v-else>
+                  <template v-if="confirmLog && confirmLog.ids">
+                    Do you want to <b>restart</b> these logs?<br>
+                    <div style="margin:10px 0;color:#1976d2;">IDs: {{ confirmLog.ids.join(', ') }}</div>
+                  </template>
+                  <template v-else>
+                    Do you want to <b>restart</b> log <b>#{{ confirmLog && confirmLog.id }}</b>?
+                  </template>
+                </div>
+              </div>
+              <div class="confirm-actions">
+                <button class="confirm-btn cancel" @click="closeConfirm">Cancel</button>
+                <button class="confirm-btn confirm" @click="doConfirm">Yes</button>
+              </div>
+            </div>
+          </div>
+          <!-- Payload Dialog -->
+          <div v-if="showPayloadDialog" class="dialog-backdrop" @click.self="closePayloadDialog">
+            <div class="dialog-box">
+              <button class="dialog-close" @click="closePayloadDialog">&times;</button>
+              <h3>{{ payloadDialogTitle }}</h3>
+              <pre>{{ payloadDialogContent }}</pre>
+              <div class="esc-hint">(ESC to close)</div>
+            </div>
+          </div>
+          <!-- Details Dialog -->
+          <div v-if="showDetailsDialog" class="dialog-backdrop" @click.self="closeDetailsDialog">
+            <div class="dialog-box">
+              <button class="dialog-close" @click="closeDetailsDialog">&times;</button>
+              <h3>Log Details</h3>
+              <table style="margin-bottom:8px; width:100%;">
+                <tr>
+                  <td style="font-weight:500; color:var(--primary-dark); width:120px;">Retry Count</td>
+                  <td>{{ detailsDialogFields.retry_count }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500; color:var(--primary-dark);">Task ID</td>
+                  <td>{{ detailsDialogFields.task_id }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500; color:var(--primary-dark);">Last Attempt</td>
+                  <td>{{ detailsDialogFields.last_attempt_at }}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight:500; color:var(--primary-dark);">Errors</td>
+                  <td>
+                    <pre v-if="typeof detailsDialogFields.errors === 'object'">{{ JSON.stringify(detailsDialogFields.errors, null, 2) }}</pre>
+                    <span v-else>{{ detailsDialogFields.errors }}</span>
+                  </td>
+                </tr>
+              </table>
+              <div class="esc-hint">(ESC to close)</div>
+            </div>
+          </div>
+          <!-- Main Content -->
+          <div v-show="!authDialog" class="container">
+            <h2>Log Viewer</h2>
+            <div class="filters">
+              <label>
+                <span><span class="material-icons">calendar_today</span>From</span>
+                <input type="date" v-model="fromDate">
+              </label>
+              <label>
+                <span><span class="material-icons">calendar_today</span>To</span>
+                <input type="date" v-model="toDate">
+              </label>
+              <label>
+                <span><span class="material-icons">flag</span>Status</span>
+                <select v-model="status">
+                  <option value="">All</option>
+                  <option v-for="opt in statusOptions" :value="opt">{{opt}}</option>
+                </select>
+              </label>
+              <label>
+                <span><span class="material-icons">tag</span>Task ID</span>
+                <input type="text" v-model="taskId" placeholder="Task ID">
+              </label>
+              <button @click="applyFilters"><span class="material-icons">search</span>Apply</button>
+              <button @click="clearFilters" type="button"><span class="material-icons">clear</span>Clear</button>
+            </div>
+            <div class="bulk-bar">
+              <button
+                :disabled="!selected.size"
+                style="background:var(--primary);color:#fff;"
+                @click="showBulkConfirm('restart-bulk', bulkRestart)">
+                <span class="material-icons">refresh</span> Restart Selected
+              </button>
+              <button
+                :disabled="!selected.size"
+                style="background:var(--error);color:#fff;"
+                @click="showBulkConfirm('delete-bulk', bulkDelete)">
+                <span class="material-icons">delete</span> Delete Selected
+              </button>
+              <span v-if="selected.size" class="selected-info">
+                {{ selected.size }} selected
+                <span class="clear-link" @click.prevent="clearSelected">Clear</span>
+              </span>
+            </div>
+            <div style="position:relative;">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="checkbox-header">
+                      <input type="checkbox"
+                        :checked="allChecked"
+                        :indeterminate.prop="someChecked"
+                        @change="toggleSelectAll"
+                        :title="allChecked ? 'Deselect all' : 'Select all'"
+                      />
+                    </th>
+                    <th>ID</th>
+                    <th>Payload</th>
+                    <th>Dhis2 Payload</th>
+                    <th>Created</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="log in logs" :key="log.id">
+                    <td class="checkbox-cell">
+                      <input type="checkbox"
+                        :checked="selected.has(log.id)"
+                        @change="toggleSelectOne(log)"
+                        :title="selected.has(log.id) ? 'Deselect' : 'Select'"
+                      />
+                    </td>
+                    <td>{{ log.id }}</td>
+                    <td>
+                      <span
+                        class="msg-snippet"
+                        tabindex="0"
+                        :title="typeof log.payload === 'string' ? log.payload : JSON.stringify(log.payload)"
+                        @click="openPayloadDialog('Payload', log.payload)"
+                        @keydown.enter="openPayloadDialog('Payload', log.payload)"
+                      >{{ snippet(log.payload) }}</span>
+                    </td>
+                    <td>
+                      <span
+                        class="msg-snippet"
+                        tabindex="0"
+                        :title="typeof log.dhis2_payload === 'string' ? log.dhis2_payload : JSON.stringify(log.dhis2_payload.String)"
+                        @click="openPayloadDialog('Dhis2 Payload', log.dhis2_payload.String)"
+                        @keydown.enter="openPayloadDialog('Dhis2 Payload', log.dhis2_payload.String)"
+                      >{{ snippet(log.dhis2_payload.String) }}</span>
+                    </td>
+                    <td class="field-created">{{ formatDate(log.submitted_at) }}</td>
+                    <td>{{ log.status }}</td>
+                    <td>
+                      <button class="icon-btn restart"
+                        @click="showConfirm('restart', log, () => restartLog(log.id))"
+                        :title="'Restart'">
+                        <span class="material-icons">refresh</span>
+                      </button>
+                      <button class="icon-btn delete"
+                        @click="showConfirm('delete', log, () => deleteLog(log.id))"
+                        :title="'Delete'">
+                        <span class="material-icons">delete</span>
+                      </button>
+                      <button class="icon-btn details"
+                        @click="openDetailsDialog(log)"
+                        :title="'Details'">
+                        <span class="material-icons">info</span>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr v-if="!logs.length">
+                    <td colspan="7" style="text-align:center;color:#999;padding:28px;">No logs found.</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div v-if="loading" class="loading-overlay">
+                <span class="material-icons" style="vertical-align:-4px;margin-right:8px;">autorenew</span>
+                Loading...
+              </div>
+            </div>
+            <div class="pagination">
+              <span style="margin-right:16px;vertical-align:middle;">
+                <span style="color:#1976d2;font-weight:500;">Rows per page:</span>
+                <select v-model="size"
+                  :style="{marginLeft:'8px',fontSize:'1rem',padding:'5px 13px',borderRadius:'8px',border:'1.5px solid #d6e2f5',outline:'none',color:'#1976d2',background:'#fff',boxShadow:'0 1px 2px #1976d215'}">
+                  <option v-for="opt in [10,25,50,100]" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+              </span>
+              <template v-if="maxPage > 1">
+                <button :disabled="page === 1" @click="gotoPage(page - 1)">
+                  <span class="material-icons" style="font-size:20px;">chevron_left</span>
+                </button>
+                <button
+                  v-for="num in pageNumbers"
+                  :key="num"
+                  :class="{active: num === page}"
+                  :style="{fontWeight: num === page ? 'bold' : 'normal'}"
+                  :disabled="num === page"
+                  @click="gotoPage(num)"
+                >{{ num }}</button>
+                <button :disabled="page === maxPage" @click="gotoPage(page + 1)">
+                  <span class="material-icons" style="font-size:20px;">chevron_right</span>
+                </button>
+              </template>
+              <span>Page {{page}} of {{maxPage}} — Total: {{total}}</span>
+            </div>
+            <div v-if="error" class="error">{{ error }}</div>
+            <div style="margin-top: 30px; text-align: right;">
+              <button
+                style="background:var(--primary);color:#fff;border-radius:7px;padding:9px 28px;font-weight:500;font-size:1rem;box-shadow:0 1px 2px #1976d215;border:none;cursor:pointer;"
+                @click="fetchLogs"
+              >
+                <span class="material-icons" style="font-size:18px;vertical-align:-3px;">refresh</span>
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      `
+    }).mount('#app');
+</script>
+</body>
+</html>

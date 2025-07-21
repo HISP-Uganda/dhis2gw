@@ -424,11 +424,11 @@ paths:
         type: string
       - description: Submitted after (RFC3339)
         in: query
-        name: submitted_from
+        name: from_date
         type: string
       - description: Submitted before (RFC3339)
         in: query
-        name: submitted_to
+        name: to_date
         type: string
       - description: Page number (default 1)
         in: query
