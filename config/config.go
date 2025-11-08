@@ -3,14 +3,17 @@ package config
 import (
 	goflag "flag"
 	"fmt"
-	"github.com/fsnotify/fsnotify"
-	"github.com/lib/pq"
-	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/go-viper/mapstructure/v2"
+	"github.com/lib/pq"
+	"github.com/spf13/viper"
 
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
@@ -75,6 +78,7 @@ func init() {
 	viper.SetConfigName("dhis2gw")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(configDir)
+	viper.AutomaticEnv()
 
 	if len(*configFile) > 0 {
 		viper.SetConfigFile(*configFile)
@@ -93,8 +97,55 @@ func init() {
 	}
 
 	DHIS2GWConf.API.AggregateMappingScheme = "CODE" // Default mapping scheme
+	DHIS2GWConf.PBS.Sync.Window = 15 * time.Minute
+	DHIS2GWConf.PBS.Sync.Interval = 1 * time.Minute
+	DHIS2GWConf.PBS.Sync.PageSize = 200
+	DHIS2GWConf.PBS.DefaultCategoryOptionCombo = "HllvX50cXC0"
+	DHIS2GWConf.PBS.CategoryOptionCombos = map[string]DHIS2CategoryOptionCombo{
+		"approved": {
+			Name:   "Budget approved",
+			UID:    "abgX6hsxvaT",
+			Option: "UHhWlfyy5bm",
+			Combo:  "R8svkeGLwE3",
+		},
+		"planned": {
+			Name:   "Budget planned",
+			UID:    "Hwbi4DDMjjd",
+			Option: "YE32G6hzVDl",
+			Combo:  "R8svkeGLwE3",
+		},
+		"release": {
+			Name:   "Release",
+			UID:    "FcZgA2sys1F",
+			Option: "lAyLQi6IqVF",
+			Combo:  "R8svkeGLwE3",
+		},
+		"expenditure": {
+			Name:   "Spent",
+			UID:    "C26fobnyPLc",
+			Option: "NfADZSy1VzB",
+			Combo:  "R8svkeGLwE3",
+		},
+	}
+	// I want a time.Time from string "2023-01-01T00:00:00Z", suggested format is time.RFC3339
+	DHIS2GWConf.PBS.Sync.Since, _ = time.Parse(time.RFC3339, "2023-01-01T00:00:00Z")
+	DHIS2GWConf.PBS.Sync.Until, _ = time.Parse(time.RFC3339, "2023-12-31T23:59:59Z")
+	DHIS2GWConf.PBS.InstanceName = "train.ndpme"
+	DHIS2GWConf.Server.RedisDB = 5
+	DHIS2GWConf.Server.QueuePrefix = ""
 
-	err := viper.Unmarshal(&DHIS2GWConf)
+	// err := viper.Unmarshal(&DHIS2GWConf)
+
+	err := viper.Unmarshal(&DHIS2GWConf, func(dc *mapstructure.DecoderConfig) {
+		dc.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			// add duration hook if you also have timeouts:
+			mapstructure.StringToTimeDurationHookFunc(),
+			stringToTimeHookWithLocal(time.Local, // or time.FixedZone("EAT", 3*3600)
+				time.RFC3339, time.RFC3339Nano,
+				"2006-01-02 15:04:05", "2006-01-02",
+			),
+		)
+	})
 	if err != nil {
 		log.Fatalf("unable to decode into struct, %v", err)
 	}
@@ -151,6 +202,13 @@ func init() {
 	v.WatchConfig()
 }
 
+type DHIS2CategoryOptionCombo struct {
+	Name   string `mapstructure:"name" yaml:"name"`
+	UID    string `mapstructure:"uid" yaml:"uid"`
+	Option string `mapstructure:"option" yaml:"option"`
+	Combo  string `mapstructure:"combo" yaml:"combo"`
+}
+
 // Config is the top level cofiguration object
 type Config struct {
 	Database struct {
@@ -162,6 +220,8 @@ type Config struct {
 		Port                        string `mapstructure:"http_port" env:"DHIS2GW_SERVER_PORT" env-description:"Server port" env-default:"9090"`
 		ProxyPort                   string `mapstructure:"proxy_port" env:"DHIS2GW_PROXY_PORT" env-description:"Server port" env-default:"9191"`
 		RedisAddress                string `mapstructure:"redis_address" env:"DHIS2GW_REDIS" env-description:"Redis address" env-default:"127.0.0.1:6379"`
+		RedisDB                     int    `mapstructure:"redis_db" env:"DHIS2GW_REDIS_DB" env-description:"Redis database number" env-default:"0"`
+		QueuePrefix                 string `mapstructure:"queue_prefix" env:"DHIS2GW_QUEUE_PREFIX" env-description:"The prefix to use for the Redis queues" env-default:"dhis2gw"`
 		MaxRetries                  int    `mapstructure:"max_retries" env:"DHIS2GW_MAX_RETRIES" env-default:"3"`
 		StartOfSubmissionPeriod     string `mapstructure:"start_submission_period" env:"DHIS2GW_START_SUBMISSION_PERIOD" env-default:"18"`
 		EndOfSubmissionPeriod       string `mapstructure:"end_submission_period" env:"DHIS2GW_END_SUBMISSION_PERIOD" env-default:"24"`
@@ -207,6 +267,28 @@ type Config struct {
 		SyncCronExpression        string `mapstructure:"sync_cron_expression" env:"sync_cron_expression" env-description:"The DIS2GW Measurements Syncronisation Cron Expression" env-default:"0 0-23/6 * * *"`
 		RetryCronExpression       string `mapstructure:"retry_cron_expression" env:"retry_cron_expression" env-description:"The DIS2GW request retry Cron Expression" env-default:"*/5 * * * *"`
 	} `yaml:"api"`
+
+	PBS struct {
+		PBSURL       string `mapstructure:"pbsurl" env:"PBS_URL" env-description:"The PBS URL to sync from" env-default:"http://localhost:8080/pbs"`
+		User         string `mapstructure:"user" env:"PBS_USER" env-description:"The user to use for PBS sync" env-default:"admin"`
+		Password     string `mapstructure:"password" env:"PBS_PASSWORD" env-description:"The password to use for PBS sync" env-default:"district"`
+		IPAddress    string `mapstructure:"ipaddress" env:"PBS_IPADDRESS" env-description:"The IP address to use for PBS sync" env-default:"`
+		JWT          string `mapstructure:"jwt" env:"PBS_JWT" env-description:"The JWT token to use for PBS sync" env-default:""`
+		VoteCode     string `mapstructure:"vote_code" env:"PBS_VOTE_CODE" env-description:"The Vote code to fetch outturns for" env-default:""`
+		FiscalYear   string `mapstructure:"fiscal_year" env:"PBS_FISCAL_YEAR" env-description:"The Fiscal year to fetch outturns for" env-default:"2023"`
+		InstanceName string `mapstructure:"instance_name"`
+		// Sync settings
+		CategoryOptionCombos       map[string]DHIS2CategoryOptionCombo `mapstructure:"category_option_combos" env:"PBS_CATEGORY_OPTION_COMBOS" env-description:"The default PBS to DHIS2 Category Option Combos mappings"`
+		DefaultCategoryOptionCombo string                              `mapstructure:"default_category_option_combo" env:"PBS_DEFAULT_CATEGORY_OPTION_COMBO" env-description:"The default PBS to DHIS2 Category Option Combo to use if no mapping is found" env-default:""`
+		Sync                       struct {
+			Once     bool          `mapstructure:"once" env:"PBSSYNC_ONCE" env-description:"Whether to run the PBS sync once and exit" env-default:"false"`
+			Interval time.Duration `mapstructure:"interval" env:"PBSSYNC_INTERVAL" env-description:"The interval to run the PBS sync" env-default:"1h"`
+			Window   time.Duration `mapstructure:"window" env:"PBSSYNC_WINDOW" env-description:"The window to fetch data from PBS" env-default:"24h"`
+			Since    time.Time     `mapstructure:"since" env:"PBSSYNC_SINCE" env-description:"The date from which to start fetching data from PBS" env-default:"2023-01-01T00:00:00Z"`
+			Until    time.Time     `mapstructure:"until" env:"PBSSYNC_UNTIL" env-description:"The date until which to fetch data from PBS" env-default:"2023-12-31T23:59:59Z"`
+			PageSize int           `mapstructure:"page_size" env:"PBSSYNC_PAGE_SIZE" env-description:"The number of items to fetch per page from PBS" env-default:"200"`
+		} `mapstructure:"sync"`
+	} `yaml:"pbs"`
 }
 
 type ServerConf struct {
@@ -260,4 +342,28 @@ func getFilesInDirectory(directory string) ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func stringToTimeHookWithLocal(loc *time.Location, layouts ...string) mapstructure.DecodeHookFunc {
+	return func(from, to reflect.Type, data any) (any, error) {
+		if to != reflect.TypeOf(time.Time{}) {
+			return data, nil
+		}
+		s, ok := data.(string)
+		if !ok {
+			return data, nil
+		}
+		s = strings.TrimSpace(s)
+		for _, layout := range layouts {
+			if t, err := time.Parse(layout, s); err == nil {
+				return t, nil
+			}
+			if !strings.ContainsAny(s, "Z+-") { // no TZ → parse in loc
+				if t, err := time.ParseInLocation(layout, s, loc); err == nil {
+					return t, nil
+				}
+			}
+		}
+		return data, fmt.Errorf("invalid time %q", s)
+	}
 }

@@ -1,9 +1,13 @@
 package utils
 
 import (
+	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
 	"time"
+
+	"github.com/goccy/go-json"
 )
 
 const alphabet = `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`
@@ -63,4 +67,85 @@ func IndexOf(slice []string, item string) int {
 		}
 	}
 	return -1
+}
+
+func PrettyPrint(v interface{}) {
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	fmt.Println(string(b))
+}
+
+func ToPrettyJSON(v interface{}) string {
+	b, _ := json.MarshalIndent(v, "", "  ")
+	return string(b)
+}
+
+var uidRegex = regexp.MustCompile(`^[a-zA-Z0-9]{11}$`)
+
+func ValidUID(s string) bool {
+	return uidRegex.MatchString(s)
+}
+
+func FilterValidUIDs(dataValues map[string]string) map[string]string {
+	filtered := make(map[string]string)
+	for k, v := range dataValues {
+		if ValidUID(k) {
+			filtered[k] = v
+		}
+	}
+	return filtered
+}
+
+func FilterValidUIDsSlice(dataValues map[string]string) []string {
+	values := make([]string, 0, len(dataValues))
+	for _, v := range dataValues {
+		if ValidUID(v) {
+			values = append(values, v)
+		}
+	}
+	return values
+}
+
+// CoalesceString returns the first non-empty string
+func CoalesceString(s ...string) string {
+	for _, v := range s {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// AnyMissing returns true if any string in subset is not found in set.
+func AnyMissing(subset, set []string) bool {
+	setMap := make(map[string]struct{}, len(set))
+	for _, s := range set {
+		setMap[s] = struct{}{}
+	}
+
+	for _, s := range subset {
+		if _, ok := setMap[s]; !ok {
+			return true
+		}
+	}
+	return false
+}
+
+// MissingStrings returns a slice of strings from subset that are not found in set.
+func MissingStrings(subset, set []string) []string {
+	setMap := make(map[string]struct{}, len(set))
+	for _, s := range set {
+		setMap[s] = struct{}{}
+	}
+
+	var missing []string
+	for _, s := range subset {
+		if _, ok := setMap[s]; !ok {
+			missing = append(missing, s)
+		}
+	}
+	return missing
 }

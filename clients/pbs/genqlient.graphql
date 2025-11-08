@@ -1,0 +1,170 @@
+# internal/clients/pbs/queries.graphql
+
+mutation Login($user: String!, $pass: String!, $ip: String!) {
+  login(data: { User_Name: $user, Password: $pass, ipAddress: $ip }) {
+    access_token
+    refresh_token
+    user {
+      User_ID
+      User_Name
+      First_Name
+      Last_Name
+      Email
+    }
+  }
+}
+
+mutation Refresh($at: String!, $rt: String!) {
+  refreshToken(data: { access_token: $at, refresh_token: $rt }) {
+    access_token
+    refresh_token
+  }
+}
+
+query LgIFMSVotes {
+  lgIFMSVotes {
+    Vote_ID
+    Vote_Code
+    Vote_Name
+    Created_Date
+  }
+}
+
+query LgIFMSBudgetOutputs {
+  lgIFMSBudgetOutputs {
+    Budget_Output_ID
+    Budget_Output_Code
+    Budget_Output_Name
+    Created_Date
+  }
+}
+
+
+query LgBudgetOutturnsByFiscalYear($fy: String!) {
+  lgBudgetOutturnsByFiscalYear(Fiscal_Year: $fy) {
+    Fiscal_Year
+    Vote_Code
+    Vote_Name
+    Programme_Code
+    Programme_Name
+    Department_Code
+    Department_Name
+    Project_Code
+    Budget_Output_Code
+    Budget_Output_Description
+    Item_Code
+    Item_Description
+    ApprovedBudget
+    RevisedBudget
+    Q1_Release
+    Q1_Expenditure
+    Q2_Release
+    Q2_Expenditure
+    Q3_Release
+    Q3_Expenditure
+    Q4_Release
+    Q4_Expenditure
+  }
+}
+
+query LgBudgetOutturnsByVoteAndFiscalYear($vote: String!, $fy: String!) {
+  lgBudgetOutturnsByVoteAndFiscalYear(Vote_Code: $vote, Fiscal_Year: $fy) {
+    Fiscal_Year
+    Vote_Code
+    Vote_Name
+    Programme_Code
+    Programme_Name
+    Department_Code
+    Department_Name
+    Project_Code
+    Budget_Output_Code
+    Budget_Output_Description
+    Item_Code
+    Item_Description
+    ApprovedBudget
+    RevisedBudget
+    Q1_Release
+    Q1_Expenditure
+    Q2_Release
+    Q2_Expenditure
+    Q3_Release
+    Q3_Expenditure
+    Q4_Release
+    Q4_Expenditure
+  }
+}
+
+query CgBudgetOutturnsByFiscalYear($fy: String!) {
+  cgBudgetOutturnByFiscalYear(Fiscal_Year: $fy) {
+    Fiscal_Year
+    Vote_Code
+    Vote_Name
+    Programme_Code
+    Programme_Name
+    Department_Code
+    Department_Name
+    Project_Code
+    Budget_Output_Code
+    Budget_Output_Description
+    Item_Code
+    Item_Description
+    ApprovedBudget
+    RevisedBudget
+    Q1Release
+    Q1Expenditure
+    Q2Release
+    Q2Expenditure
+    Q3Release
+    Q3Expenditure
+    Q4Release
+    Q4Expenditure
+  }
+}
+
+query CgPiapIndicatorProjectionsByFiscalYear($fy: String!) {
+  cgPiapIndicatorProjectionsByFiscalYear(Fiscal_Year: $fy) {
+      Fiscal_Year
+      Vote_Code
+      Vote_Name
+      Programme_Code
+      Programme_Name
+      Department_Code
+      Department_Name
+      Budget_Output_Code
+      Budget_Output_Description
+      PIAP_Output_Code
+      PIAP_Output_Description
+      PIAP_Output_Indicator_Code
+      PIAP_Output_Indicator_Name
+      Q1_Actual_Target
+      Q1_Reason_For_Variation
+      Q2_Actual_Target
+      Q2_Reason_For_Variation
+      Q2_Cum_Performance
+      Q3_Actual_Target
+      Q3_Reason_For_Variation
+      Q3_Cum_Performance
+      Q4_Actual_Target
+      Q4_Reason_For_Variation
+      Q4_Cum_Performance
+  }
+}
+
+query CgProgrammeOutcomeIndicatorProjectionsByFiscalYear ($fy: String!) {
+  cgProgrammeOutcomeIndicatorProjectionsByFiscalYear(Fiscal_Year: $fy) {
+      Fiscal_Year
+      Programme_Code
+      Programme_Name
+      Programme_Objective_Code
+      Programme_Objective_Name
+      Programme_Outcome_Code
+      Programme_Outcome_Description
+      Programme_Outcome_Indicator_Code
+      Programme_Outcome_Indicator_Description
+      Target_Y1
+      Q2_Actual
+      Q2_Reason_For_Variation
+      Q4_Actual
+      Q4_Reason_For_Variation
+  }
+}

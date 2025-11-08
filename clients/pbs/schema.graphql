@@ -1,0 +1,898 @@
+type CgIfmsAccountsDto {
+  Account_ID: Float
+  Item_Code: String
+  Item_Name: String
+  Description: String
+  Created_Date: DateTime
+}
+
+# A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+scalar DateTime
+
+type LgIFMSVotesDto {
+  Vote_ID: Float!
+  Vote_Code: String
+  Vote_Name: String
+  Created_Date: DateTime
+}
+
+type LgIFMSWarrantsDto {
+  Warrant_ID: Float!
+  Fund: String
+  Funding_Source: String
+  Vote_Code: String
+  Programme: String
+  SubProgramme: String
+  Department_Code: String
+  Service_Area_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime
+}
+
+type LgIFMSBudgetOutputsDto {
+  Budget_Output_ID: Float!
+  Budget_Output_Code: String
+  Budget_Output_Name: String
+  Created_Date: DateTime
+}
+
+type LgIFMSSalaryPaymentsDto {
+  Salary_Payment_ID: Float!
+  Vote_Code: String
+  Programme: String
+  SubProgramme: String
+  Department_Code: String
+  Service_Area_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Supplier_No: String
+  Supplier_Name: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime
+}
+
+type LgIFMSPensionPaymentsDto {
+  Pension_Payment_ID: Float!
+  Vote_Code: String
+  Programme: String
+  SubProgramme: String
+  Department_Code: String
+  Service_Area_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Supplier_No: String
+  Supplier_Name: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime
+}
+
+type CgIfmsDeductionDto {
+  Deduction_ID: Float
+  Supplier_No: String
+  Vendor_Name: String
+  Category: String
+  Vote_Code: String
+  Invoice_Number: String
+  Item_Code: String
+  Amount: Float
+  Description: String
+  Month: String
+  Created_Date: DateTime
+}
+
+type CgIfmsExpendituresDto {
+  Expenditure_ID: Float
+  Fund: String
+  Funding_Source: String
+  Vote_Code: String
+  Programme: String
+  Sub_Programme: String
+  Sub_SubProgramme: String
+  Department_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime
+}
+
+type CgIfmsPensionPaymentsDto {
+  Pension_Payment_ID: Float
+  Vote_Code: String
+  Programme: String
+  Sub_Programme: String
+  Sub_SubProgramme: String
+  Department_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Supplier_No: String
+  Supplier_Name: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime
+}
+
+type CgIfmsProjectsDto {
+  Project_ID: Float
+  Project_Code: String
+  Project_Name: String
+  Created_Date: DateTime
+}
+
+type CgIfmsSalaryPaymentsDto {
+  Salary_Payment_ID: Float
+  Vote_Code: String
+  Programme: String
+  Sub_Programme: String
+  Sub_SubProgramme: String
+  Department_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Supplier_No: String
+  Supplier_Name: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime
+}
+
+type CgIfmsSubSubprogrammesDto {
+  Sub_SubProgramme_ID: Float
+  Sub_SubProgramme_Code: String
+  Sub_SubProgramme_Name: String
+  Vote_Code: String
+  Created_Date: DateTime
+}
+
+type CgIfmsVoteDto {
+  Vote_ID: Float
+  Vote_Code: String
+  Vote_Name: String
+  Created_Date: DateTime
+}
+
+type CgIfmsWarrantsDto {
+  Warrant_ID: Float
+  Vote_Code: String
+  Programme: String
+  Sub_Programme: String
+  Sub_SubProgramme: String
+  Department_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Fund: String
+  Funding_Source: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime
+}
+
+type CgIfmsDepartmentsDto {
+  Department_ID: Float
+  Department_Code: String
+  Department_Name: String
+  Vote_Code: String
+  Sub_SubProgramme_Code: String
+  Created_Date: DateTime
+}
+
+type CtIfmsDonorListsDto {
+  Donor_List_ID: Float
+  Donor_Code: String
+  Donor_Name: String
+  Created_Date: String
+}
+
+type CtIfmsProgrammesDto {
+  Programme_ID: Float
+  Programme_Code: String
+  Programme_Name: String
+  Created_Date: DateTime
+}
+
+type CgIfmsUploadApprovedBudgetDto {
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCentre: String
+  ProjectCode: String
+  BudgetOutputCode: String
+  Spare: String
+  GeographicalLocation: String
+  Fiscal_Year: String
+  Account: String
+  Amount: Float
+  Year_ID: Float
+  Stage: Float
+}
+
+type LgCostCenterPaymentsDto {
+  Cost_Center_Payment_ID: Float!
+  Fund: String
+  Funding_Source: String
+  Vote_Code: String
+  Programme_Code: String
+  SubProgramme_Code: String
+  Department_Code: String
+  Service_Area_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Item: String
+  Supplier_Number: String
+  Cost_Centre: String
+  Amount: String
+  Month: String
+  Created_Date: String
+}
+
+type LgDeductionsDto {
+  Deductions_ID: String!
+  Supplier_Number: String
+  Vendor_Name: String
+  Category: String
+  Vote_Code: String
+  Invoice_Number: String
+  Item_Code: String
+  Amount: String
+  Description: String
+  Month: String
+  Created_Date: String
+}
+
+type LgDepartmentsDto {
+  Department_ID: Float!
+  Department_Code: String
+  Department_Name: String
+  Created_Date: String
+}
+
+type LgErrorExpendituresDto {
+  Error_Expenditure_ID: Float
+  Error_Message: String
+  Fund: String
+  Funding_Source: String
+  Vote_Code: String
+  Department_Code: String
+  Project_Code: String
+  Programme: String
+  SubProgramme: String
+  Sub_SubProgramme: String
+  Budget_Output_Code: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime!
+  Modified_Date: DateTime!
+  Created_By: String!
+  Modified_By: String!
+}
+
+type LgErrorWarrentsDto {
+  Error_Warrant_ID: Float
+  Error_Message: String
+  Fund: String
+  Funding_Source: String
+  Vote_Code: String
+  Department_Code: String
+  Project_Code: String
+  Programme: String
+  SubProgramme: String
+  Sub_SubProgramme: String
+  Budget_Output_Code: String
+  Item: String
+  Amount: Float
+  Month: String
+  Created_Date: DateTime!
+  Modified_Date: DateTime!
+  Created_By: String!
+  Modified_By: String!
+}
+
+type LgExpendituresDto {
+  Fund: String
+  Funding_Source: String
+  Vote_Code: String
+  Programme: String
+  SubProgramme: String
+  Sub_SubProgramme: String
+  Department_Code: String
+  Service_Area_Code: String
+  Project_Code: String
+  Budget_Output_Code: String
+  Item: String
+  Amount: String
+  Month: String
+  Created_Date: String
+  Expenditure_ID: Float!
+}
+
+type LgServiceAreasDto {
+  Department_Code: String
+  Service_Area_Code: String
+  Service_Area_Name: String
+  Created_Date: String
+  Service_Area_ID: Float!
+}
+
+type LgIfmsUploadRevenueBudgetFinalDto {
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCentre: String
+  ProjectCode: String
+  BudgetOutputCode: String
+  Spare: String
+  GeographicalLocation: String
+  FinancialYear: String
+  Account: String
+  Year_ID: Float
+  Stage: Float
+  Amount: Float
+}
+
+type LgIfmsUploadApprovedBudgetFinalDto {
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCentre: String
+  ProjectCode: String
+  BudgetOutputCode: String
+  Spare: String
+  GeographicalLocation: String
+  Account: String
+  Year_ID: Float
+  Stage: Float
+  Amount: Float
+  FinancialYear: String
+}
+
+type CgBotExpenditureLimitsUploadDto {
+  ExpLimitID: Float
+  LedgerID: Float
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCentre: String
+  ProjectCode: String
+  BudgetOutputCode: String
+  Spare: String
+  GeographicalLocation: String
+  Account: String
+  Amount: Float
+  PERIOD: String
+  Sign: String
+  Quarter: String
+}
+
+type LgBotExpenditureLimitsUploadDto {
+  ExpLimitID: Float
+  LedgerID: Float
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCentre: String
+  ProjectCode: String
+  BudgetOutputCode: String
+  Spare: String
+  GeographicalLocation: String
+  Account: String
+  Amount: Float
+  PERIOD: String
+  Sign: String
+  Quarter: String
+}
+
+type UserDto {
+  User_ID: Float!
+  User_Name: String!
+  First_Name: String!
+  Last_Name: String!
+  Email: String!
+  Status: String!
+  Mobile_Number: String!
+  Password: String!
+  Created_Date: String!
+  Modified_Date: String!
+  Created_By: String!
+  Modified_By: String!
+}
+
+type AuthDto {
+  access_token: String
+  refresh_token: String
+  user: UserDto
+}
+
+type ResetPasswordDto {
+  reset: Boolean!
+}
+
+type LogoutDto {
+  User_ID: Float!
+}
+
+type HcmInstitutionalWorkplanViewDto {
+  FiscalYear: String
+  Fund: String
+  Programme: String
+  VoteCostCenter: String
+  Project: String
+  BudgetOutput: String
+  AnnualPlannedOutput: String
+  Q1PlannedOutput: String
+  Q2PlannedOutput: String
+  Q3PlannedOutput: String
+  Q4PlannedOutput: String
+  Year_ID: Float
+  Stage: Float
+  PayCategory: String
+}
+
+type HcmRecruitmentPlanBudgetViewDto {
+  FiscalYear: String
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCenter: String
+  Project: String
+  PostTitle: String
+  SalaryScale: String
+  NumberOfApprovedPosts: Float
+  MonthlySalary: Float
+  TransactionID: Float
+  Year_ID: Float
+  Stage: Float
+}
+
+type HcmStaffTrainingBudgetViewDto {
+  Fiscal_Year: String
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCentre: String
+  ProjectCode: String
+  BudgetOutputCode: String
+  GeographicalLocation: String
+  Account: String
+  Amount: Float
+  PayCategory: String
+}
+
+type CgIbpProjectsViewDto {
+  Vote_Code: String
+  Vote_Name: String
+  Programme_Code: String
+  Programme_Name: String
+  SubProgramme_Code: String
+  SubProgramme_Name: String
+  Sub_SubProgramme_Code: String
+  Sub_SubProgramme_Name: String
+  Project_Code: String
+  Project_Name: String
+  Status: String
+}
+
+type CgIbpProjectBudgetAllocationsViewDto {
+  Fiscal_Year: String
+  Vote_Code: String
+  Vote_Name: String
+  Programme_Code: String
+  Programme_Name: String
+  SubProgramme_Code: String
+  SubProgramme_Name: String
+  Sub_SubProgramme_Code: String
+  Sub_SubProgramme_Name: String
+  Project_Code: String
+  Project_Name: String
+  Budget_Output_Code: String
+  Budget_Output_Description: String
+  Item_Code: String
+  Description: String
+  GoU: Float
+  ExtFin: Float
+  AIA: Float
+  GoUArrears: Float
+  BudgetStage: String
+  Year_ID: Float
+  Stage: Float
+}
+
+type CgBotIfmsSupplementaryUploadFinalViewDto {
+  SupplementaryID: Float
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCentre: String
+  ProjectCode: String
+  BudgetOutputCode: String
+  Spare: String
+  GeographicalLocation: String
+  Account: String
+  Amount: Float
+  Year_ID: Float
+  Stage: Float
+  Supplement_Status: String
+  Fiscal_Year: String
+}
+
+type CgBotIfmsVirementsUploadFinalViewDto {
+  VirementID: Float
+  Fund: String
+  FundingSource: String
+  Programme: String
+  VoteCostCentre: String
+  ProjectCode: String
+  BudgetOutputCode: String
+  Spare: String
+  GeographicalLocation: String
+  Account: String
+  Amount: Float
+  Year_ID: Float
+  Stage: Float
+  Virement_Status: String
+  Fiscal_Year: String
+  Sign: String
+  LedgerID: Float
+}
+
+type EgpCgApprovedBudgetDto {
+  Vote_Code: String
+  Vote_Name: String
+  Programme_Code: String
+  Programme_Name: String
+  SubProgramme_Code: String
+  SubProgramme_Name: String
+  Sub_SubProgramme_Code: String
+  Sub_SubProgramme_Name: String
+  Department_Code: String
+  Department_Name: String
+  Project_Code: String
+  Project_Name: String
+  Budget_Output_Code: String
+  Budget_Output_Description: String
+  Item_Code: String
+  Item_Description: String
+  Amount: Float
+  Fiscal_Year: String
+  Funding_Source: String
+}
+
+type EgpLgApprovedBudgetDto {
+  Vote_Code: String
+  Vote_Name: String
+  Programme_Code: String
+  Programme_Name: String
+  SubProgramme_Code: String
+  SubProgramme_Name: String
+  Department_Code: String
+  Department_Name: String
+  Service_Area_Code: String
+  Service_Area_Name: String
+  Project_Code: String
+  Project_Name: String
+  Budget_Output_Code: String
+  Budget_Output_Description: String
+  Item_Code: String
+  Item_Description: String
+  Amount: Float
+  Fiscal_Year: String
+  Funding_Source: String
+}
+
+type OpmCgProgrammeOutcomeIndicatorProjectionDto {
+  Fiscal_Year: String
+  Programme_Code: String
+  Programme_Name: String
+  Programme_Objective_Code: String
+  Programme_Objective_Name: String
+  Programme_Outcome_Code: String
+  Programme_Outcome_Description: String
+  Programme_Outcome_Indicator_Code: String
+  Programme_Outcome_Indicator_Description: String
+  Target_Y1: String
+  Q2_Actual: String
+  Q2_Reason_For_Variation: String
+  Q4_Actual: String
+  Q4_Reason_For_Variation: String
+}
+
+type OpmLgPiapIndicatorProjectionsDto {
+  Fiscal_Year: String
+  Vote_code: String
+  Vote_Name: String
+  Department_Code: String
+  Department_Name: String
+  Service_Area_Code: String
+  Service_Area_Name: String
+  Programme_Code: String
+  Programme_Name: String
+  Budget_Output_Code: String
+  Budget_Output_Name: String
+  PIAP_Output_Code: String
+  PIAP_Output_Name: String
+  Indicator_Code: String
+  Indicator_Name: String
+  Target_Y1: String
+  Q1_Actual_Target: String
+  Q1_Reason_For_Variation: String
+  Q2_Actual_Target: String
+  Q2_Cum_Performamnce: String
+  Q2_Reason_For_Variation: String
+  Q3_Actual_Target: String
+  Q3_Cum_Performamnce: String
+  Q3_Reason_For_Variation: String
+  Q4_Actual_Target: String
+  Q4_Cum_Performamnce: String
+  Q4_Reason_For_Variation: String
+}
+
+type OpmLgBudgetOutturnDto {
+  Fiscal_Year: String
+  Vote_Code: String
+  Vote_Name: String
+  Department_Code: String
+  Department_Name: String
+  Project_Code: String
+  Service_Area_Code: String
+  Service_Area_Name: String
+  Programme_Code: String
+  Programme_Name: String
+  Budget_Output_Code: String
+  Budget_Output_Description: String
+  Item_Code: String
+  Item_Description: String
+  ApprovedBudget: Float
+  RevisedBudget: Float
+  Q1_Release: Float
+  Q1_Expenditure: Float
+  Q2_Release: Float
+  Q2_Expenditure: Float
+  Q3_Release: Float
+  Q3_Expenditure: Float
+  Q4_Release: Float
+  Q4_Expenditure: Float
+}
+
+type OpmCgPiapIndicatorProjectionsDto {
+  Fiscal_Year: String
+  Vote_Code: String
+  Vote_Name: String
+  Programme_Code: String
+  Programme_Name: String
+  Sub_SubProgramme_Code: String
+  Sub_SubProgramme_Name: String
+  Department_Code: String
+  Department_Name: String
+  Budget_Output_Code: String
+  Budget_Output_Description: String
+  PIAP_Output_Code: String
+  PIAP_Output_Description: String
+  PIAP_Output_Indicator_Code: String
+  PIAP_Output_Indicator_Name: String
+  Target_Y1: String
+  Q1_Actual_Target: String
+  Q1_Reason_For_Variation: String
+  Q2_Actual_Target: String
+  Q2_Reason_For_Variation: String
+  Q2_Cum_Performance: String
+  Q3_Actual_Target: String
+  Q3_Reason_For_Variation: String
+  Q3_Cum_Performance: String
+  Q4_Actual_Target: String
+  Q4_Reason_For_Variation: String
+  Q4_Cum_Performance: String
+}
+
+type OpmCgBudgetOutturnDto {
+  Fiscal_Year: String
+  Vote_Code: String
+  Vote_Name: String
+  Programme_Code: String
+  Programme_Name: String
+  Sub_SubProgramme_Code: String
+  Sub_SubProgramme_Name: String
+  Department_Code: String
+  Department_Name: String
+  Project_Code: String
+  Project_Name: String
+  Budget_Output_Code: String
+  Budget_Output_Description: String
+  Item_Code: String
+  Item_Description: String
+  ApprovedBudget: Float
+  RevisedBudget: Float
+  Q1Release: Float
+  Q1Expenditure: Float
+  Q2Release: Float
+  Q2Expenditure: Float
+  Q3Release: Float
+  Q3Expenditure: Float
+  Q4Release: Float
+  Q4Expenditure: Float
+}
+
+type Query {
+  users: [UserDto!]
+  activeUsers: [UserDto!]
+  user(id: Int!): UserDto
+  usersAssignedRole(Role_ID: Int!, User_Type_Name: String!): [UserDto!]
+  usersByCgUserTypeAndNotAssigndRoles(User_Type_ID: Int!): [UserDto!]
+  usersByLgUserTypeAndNotAssigndRoles(User_Type_ID: Int!): [UserDto!]
+  getUserProfile: UserDto
+  cgIfmsAccounts: [CgIfmsAccountsDto!]
+  lgIFMSVotes: [LgIFMSVotesDto!]
+  lgIFMSWarrants: [LgIFMSWarrantsDto!]
+  lgIFMSBudgetOutputs: [LgIFMSBudgetOutputsDto!]
+  lgIFMSSalaryPayments: [LgIFMSSalaryPaymentsDto!]
+  lgIFMSPensionPayments: [LgIFMSPensionPaymentsDto!]
+  cgIfmsDeductions: [CgIfmsDeductionDto!]
+  cgIfmsExpenditures: [CgIfmsExpendituresDto!]
+  cgIfmsPensionPayments: [CgIfmsPensionPaymentsDto!]
+  cgIfmsProjects: [CgIfmsProjectsDto!]
+  cgIfmsSalaryPayments: [CgIfmsSalaryPaymentsDto!]
+  cgIfmsSubSubProgrammes: [CgIfmsSubSubprogrammesDto!]
+  cgIfmsVotes: [CgIfmsVoteDto!]
+  cgIfmsWarrants: [CgIfmsWarrantsDto!]
+  cgIfmsDepartments: [CgIfmsDepartmentsDto!]
+  ctIfmsDonorLists: [CtIfmsDonorListsDto!]
+  ctIfmsProgrammes: [CtIfmsProgrammesDto!]
+  cgIfmsUploadApprovedBudget: [CgIfmsUploadApprovedBudgetDto!]
+  cgIfmsUploadApprovedBudgetByYearIDandStage(
+    Stage: Float!
+    Year_ID: Float!
+  ): [CgIfmsUploadApprovedBudgetDto!]
+  lgifmsCostCenterPayment: [LgCostCenterPaymentsDto!]
+  lgIfmsDeductions: [LgDeductionsDto!]
+  lgIfmsDepartment: [LgDepartmentsDto!]
+  lgifmsErrorExpenditure: [LgErrorExpendituresDto!]
+  lgErrorWarrents: [LgErrorWarrentsDto!]
+  lgIfmsExpenditures: [LgExpendituresDto!]
+  lgIfmsServiceArea: [LgServiceAreasDto!]
+  lgIfmsUploadRevenueBudget: [LgIfmsUploadRevenueBudgetFinalDto!]
+  lgIfmsUploadRevenueBudgetByYearIDandStage(
+    Stage: Float!
+    Year_ID: Float!
+  ): [LgIfmsUploadRevenueBudgetFinalDto!]
+  lgIfmsUploadApprovedBudgetFinal: [LgIfmsUploadApprovedBudgetFinalDto!]
+  cgBotExpenditureLimitsUpload: [CgBotExpenditureLimitsUploadDto!]
+  lgBotExpenditureLimitsUpload: [LgBotExpenditureLimitsUploadDto!]
+  hcmInstitutionalWorkplan: [HcmInstitutionalWorkplanViewDto!]
+  institutionalWorkplanByYearIDandStage(
+    Stage: Float!
+    Year_ID: Float!
+  ): [HcmInstitutionalWorkplanViewDto!]
+  hcmInstitutionalWorkplanByFiscalYearVCCAndPayCategory(
+    PayCategory: String!
+    VoteCostCenter: String!
+    FiscalYear: String!
+  ): [HcmInstitutionalWorkplanViewDto!]
+  hcmRecruitmentPlanBudget: [HcmRecruitmentPlanBudgetViewDto!]
+  hcmRecruitmentPlanBudgetByYearIDandStage(
+    Stage: Float!
+    Year_ID: Float!
+  ): [HcmRecruitmentPlanBudgetViewDto!]
+  hcmRecruitmentPlanBudgetByFiscalYearAndVCC(
+    VoteCostCenter: String!
+    FiscalYear: String!
+  ): [HcmRecruitmentPlanBudgetViewDto!]
+  hcmStaffTrainingBudget: [HcmStaffTrainingBudgetViewDto!]
+  hcmStaffTrainingBudgetByFiscalYearVCCAndBOCPayCategory(
+    PayCategory: String!
+    VoteCostCentre: String!
+    Fiscal_Year: String!
+  ): [HcmStaffTrainingBudgetViewDto!]
+  cgIbpProjects: [CgIbpProjectsViewDto!]
+  cgActiveIbpProjects: [CgIbpProjectsViewDto!]
+  cgIbpProjectBudgetAllocations: [CgIbpProjectBudgetAllocationsViewDto!]
+  cgIbpProjectBudgetAllocationByFiscalYearVCAndBOCProjectCode(
+    BudgetStage: String!
+    Fiscal_Year: String!
+  ): [CgIbpProjectBudgetAllocationsViewDto!]
+  cgBotIfmsSupplementaryUploadFinal: [CgBotIfmsSupplementaryUploadFinalViewDto!]
+  cgBotIfmsSupplementaryUploadFinalYearIDandStage(
+    Stage: Float!
+    Year_ID: Float!
+  ): [CgBotIfmsSupplementaryUploadFinalViewDto!]
+  cgBotIfmsVirementsUploadFinal: [CgBotIfmsVirementsUploadFinalViewDto!]
+  cgBotIfmsVirementsUploadFinalYearIDandStage(
+    Stage: Float!
+    Year_ID: Float!
+  ): [CgBotIfmsVirementsUploadFinalViewDto!]
+  egpCgApprovedBudgetByVoteCodeAndFiscalYear(
+    Fiscal_Year: String!
+    Vote_Code: String!
+  ): [EgpCgApprovedBudgetDto!]
+  egpLgApprovedBudgetByVoteCodeAndFiscalYear(
+    Fiscal_Year: String!
+    Vote_Code: String!
+  ): [EgpLgApprovedBudgetDto!]
+  cgProgrammeOutcomeIndicatorProjectionsByFiscalYear(
+    Fiscal_Year: String!
+  ): [OpmCgProgrammeOutcomeIndicatorProjectionDto!]
+  lgPiapIndicatorProjectionsByFiscalYear(
+    Fiscal_Year: String!
+  ): [OpmLgPiapIndicatorProjectionsDto!]
+  lgBudgetOutturnsByFiscalYear(Fiscal_Year: String!): [OpmLgBudgetOutturnDto!]
+  lgBudgetOutturnsByVoteAndFiscalYear(
+    Vote_Code: String!
+    Fiscal_Year: String!
+  ): [OpmLgBudgetOutturnDto!]
+  cgPiapIndicatorProjectionsByFiscalYear(
+    Fiscal_Year: String!
+  ): [OpmCgPiapIndicatorProjectionsDto!]
+  cgBudgetOutturnByFiscalYear(Fiscal_Year: String!): [OpmCgBudgetOutturnDto!]
+}
+
+type Mutation {
+  createUser(data: CreateUserInput!): UserDto!
+  updateUser(data: UpdateUserInput!, id: Float!): UserDto
+  updatePassword(data: UpdateUserPasswordInput!, id: Float!): UserDto
+  removeUser(id: Int!): UserDto
+  login(data: AuthInput!): AuthDto!
+  refreshToken(data: TokenInput!): AuthDto
+  resetForgotPassword(data: ResetPasswordInput!): ResetPasswordDto!
+  logout(User_ID: Float!): LogoutDto!
+}
+
+input CreateUserInput {
+  User_Name: String!
+  First_Name: String!
+  Last_Name: String!
+  Email: String!
+  Status: String!
+  Mobile_Number: String!
+  Password: String
+  Created_By: String
+  Modified_By: String
+}
+
+input UpdateUserInput {
+  User_Name: String
+  First_Name: String
+  Last_Name: String
+  Email: String
+  Status: String
+  Mobile_Number: String
+  Password: String
+  Created_By: String
+  Modified_By: String
+}
+
+input UpdateUserPasswordInput {
+  User_Name: String
+  First_Name: String
+  Last_Name: String
+  Email: String
+  Status: String
+  Mobile_Number: String
+  Password: String!
+  Created_By: String
+  Modified_By: String
+  NewPassword: String!
+}
+
+input AuthInput {
+  ipAddress: String!
+  User_Name: String!
+  Password: String!
+}
+
+input TokenInput {
+  access_token: String!
+  refresh_token: String!
+}
+
+input ResetPasswordInput {
+  email: String!
+}

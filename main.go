@@ -9,23 +9,26 @@ import (
 	"dhis2gw/docs"
 	"dhis2gw/middleware"
 	"dhis2gw/tasks"
+	"dhis2gw/utils"
 	"fmt"
+	"html/template"
+	"net/http"
+	"os/signal"
+	"syscall"
+
 	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gomarkdown/markdown"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"html/template"
-	"net/http"
-	"os/signal"
-	"syscall"
 
-	"github.com/hibiken/asynq"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/hibiken/asynq"
+	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -147,8 +150,12 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 		v2.GET("/mappings", mappingsController.GetMappingsHandler())
 		v2.POST("/mappings/import/csv", mappingsController.ImportCSVHandler)
 		v2.POST("/mappings/import/excel", mappingsController.ImportExcelHandler)
+		v2.GET("/mappings/export/excel", mappingsController.ExportExcelMappingsHandler)
 
 	}
+	mappingsController := &controllers.MappingController{}
+	router.GET("/mappings/export/excel-template", mappingsController.ExportExcelTemplateHandler)
+
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	router.StaticFile("/logs-viewer", fmt.Sprintf("%s/logs_viewer.html", staticDir))
 	// Documentation Routes
@@ -218,14 +225,12 @@ func startWorker(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	srv := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: config.DHIS2GWConf.Server.RedisAddress},
+		asynq.RedisClientOpt{
+			Addr: config.DHIS2GWConf.Server.RedisAddress, DB: config.DHIS2GWConf.Server.RedisDB},
 		asynq.Config{
 			Concurrency: config.DHIS2GWConf.Server.MaxConcurrent,
-			Queues: map[string]int{
-				"critical": 6,
-				"default":  3,
-				"low":      1,
-			},
+
+			Queues: utils.Queues(config.DHIS2GWConf.Server.QueuePrefix),
 		},
 	)
 

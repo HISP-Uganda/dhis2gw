@@ -3,10 +3,11 @@ package models
 import (
 	"dhis2gw/config"
 	"fmt"
+	"time"
+
 	"github.com/HISP-Uganda/go-dhis2-sdk/aggregate"
 	"github.com/HISP-Uganda/go-dhis2-sdk/dhis2/schema"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 type AggregateRequest struct {
@@ -25,7 +26,7 @@ type AggregateResponse struct {
 }
 
 func (r *AggregateRequest) ToDHIS2AggregatePayload() aggregate.DataValueSetPayload {
-	dataValues := ConvertDataValuesToDHIS2DataValues(r.DataValues)
+	dataValues := ConvertDataValuesToDHIS2DataValues(r.DataValues, "default", "default")
 	dateNow := time.Now().Format("2006-01-02")
 	return aggregate.DataValueSetPayload{
 		DataSet:      r.DataSet,
@@ -36,9 +37,9 @@ func (r *AggregateRequest) ToDHIS2AggregatePayload() aggregate.DataValueSetPaylo
 	}
 }
 
-func ConvertDataValuesToDHIS2DataValues(requestDataValues map[string]any) []schema.DataValue {
+func ConvertDataValuesToDHIS2DataValues(requestDataValues map[string]any, source, instance string) []schema.DataValue {
 	dv := []schema.DataValue{}
-	codedMapping, err := GetDhis2MappingsByCode(config.DHIS2GWConf.API.AggregateMappingScheme)
+	codedMapping, err := GetDhis2MappingsByCode(config.DHIS2GWConf.API.AggregateMappingScheme, source, instance)
 	if err != nil {
 		log.Debugf("Error getting code dimensions: %v", err)
 		return dv

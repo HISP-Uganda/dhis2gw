@@ -5,11 +5,12 @@ import (
 	"dhis2gw/db"
 	"dhis2gw/models"
 	"encoding/base64"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
-	"strings"
 )
 
 func BasicAuth(dbConn *sqlx.DB, asynqClient *asynq.Client) gin.HandlerFunc {

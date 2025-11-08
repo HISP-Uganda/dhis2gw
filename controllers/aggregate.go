@@ -10,11 +10,12 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 )
 
 //go:embed schemas/simplified_aggregate_request.json
@@ -85,7 +86,8 @@ func (a *AggregateController) CreateRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
 	}
-	taskInfo, err := asynqClient.Enqueue(task)
+	queue := config.DHIS2GWConf.Server.QueuePrefix + ":default"
+	taskInfo, err := asynqClient.Enqueue(task, asynq.Queue(queue))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enqueue job"})
 		return
@@ -116,7 +118,8 @@ func (a *AggregateController) CreateRequest(c *gin.Context) {
 // @Router /aggregate/reenqueue/{task_id} [post]
 func (a *AggregateController) ReEnqueueAggregateTask(c *gin.Context) {
 	taskID := c.Param("task_id")
-	queue := c.DefaultQuery("queue", "default")
+	queue := config.DHIS2GWConf.Server.QueuePrefix + ":default"
+	// queue := c.DefaultQuery("queue", "default")
 	asyncClient := c.MustGet("asynqClient").(*asynq.Client)
 	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: config.DHIS2GWConf.Server.RedisAddress})
 
@@ -136,7 +139,7 @@ func (a *AggregateController) ReEnqueueAggregateTask(c *gin.Context) {
 	// Create a new Task from the old type & payload
 	task := asynq.NewTask(info.Type, info.Payload, asynq.MaxRetry(3))
 	// Enqueue as a new task (you can add options, like target queue or delay, here)
-	taskInfo, errEnqueue := asyncClient.Enqueue(task)
+	taskInfo, errEnqueue := asyncClient.Enqueue(task, asynq.Queue(queue))
 	if errEnqueue != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to re-enqueue task: " + err.Error()})
 		return
@@ -181,7 +184,8 @@ func (a *AggregateController) BatchReEnqueueAggregateTasksByIDs(c *gin.Context) 
 	}
 
 	asyncClient := c.MustGet("asynqClient").(*asynq.Client)
-	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: config.DHIS2GWConf.Server.RedisAddress})
+	inspector := asynq.NewInspector(asynq.RedisClientOpt{
+		Addr: config.DHIS2GWConf.Server.RedisAddress, DB: config.DHIS2GWConf.Server.RedisDB})
 
 	reEnqueued := 0
 	failed := 0
@@ -195,8 +199,9 @@ func (a *AggregateController) BatchReEnqueueAggregateTasksByIDs(c *gin.Context) 
 			continue
 		}
 
+		queue := config.DHIS2GWConf.Server.QueuePrefix + ":default"
 		task := asynq.NewTask(info.Type, info.Payload)
-		taskInfo, err := asyncClient.Enqueue(task, asynq.MaxRetry(3))
+		taskInfo, err := asyncClient.Enqueue(task, asynq.MaxRetry(3), asynq.Queue(queue))
 		if err != nil {
 			failed++
 			errors = append(errors, fmt.Sprintf("Task %s: failed to enqueue: %v", taskID, err))
