@@ -19,7 +19,6 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 //go:embed mapping_option_sets.json
@@ -128,63 +127,7 @@ var (
 	k       = koanf.New(".")
 	cfg     *Config
 	cfgLock sync.RWMutex
-	v       *viper.Viper
 )
-
-// LoadConfig initializes viper, reads the file, and watches for changes.
-func LoadConfig() (*Config, error) {
-	v = viper.New()
-	v.SetConfigType("yaml")
-	v.SetConfigName("ibp")
-	v.AddConfigPath("/etc/dhis2gw/conf.d")
-
-	if err := v.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("error reading config: %w", err)
-	}
-
-	var c Config
-	if err := v.Unmarshal(&c); err != nil {
-		return nil, fmt.Errorf("error unmarshalling config: %w", err)
-	}
-
-	if c.Server.TimeoutSeconds == 0 {
-		c.Server.TimeoutSeconds = 10
-	}
-
-	cfg = &c
-	cfg.InstanceName = "train.ndpme"
-	cfg.SourceName = "pbs"
-	cfg.DHIS2URL = utils.CoalesceString("", config.DHIS2GWConf.API.DHIS2BaseURL, "https://play.im.dhis2.org/stable-2-42-3/api/")
-	cfg.DHIS2User = utils.CoalesceString("", config.DHIS2GWConf.API.DHIS2User, "admin")
-	cfg.DHIS2Password = utils.CoalesceString(config.DHIS2GWConf.API.DHIS2Password, "district")
-	// Watch for changes
-	v.WatchConfig()
-	v.OnConfigChange(func(e fsnotify.Event) {
-		log.Printf("🔄 Config file changed: %s", e.Name)
-		reloadConfig()
-	})
-
-	return cfg, nil
-}
-
-// reloadConfig safely updates the global config
-func reloadConfig() {
-	cfgLock.Lock()
-	defer cfgLock.Unlock()
-
-	var newCfg Config
-	if err := v.Unmarshal(&newCfg); err != nil {
-		log.Printf("⚠️ Failed to reload config: %v", err)
-		return
-	}
-
-	if newCfg.Server.TimeoutSeconds == 0 {
-		newCfg.Server.TimeoutSeconds = 10
-	}
-
-	cfg = &newCfg
-	log.Printf("✅ Configuration reloaded successfully (base_url=%s)", cfg.Server.BaseURL)
-}
 
 // GetConfig returns a thread-safe copy of current config
 func GetConfig() *Config {
@@ -193,7 +136,7 @@ func GetConfig() *Config {
 	return cfg
 }
 
-func LoadConfig2() (*Config, error) {
+func LoadConfig() (*Config, error) {
 	configFile := "/etc/dhis2gw/conf.d/ibp.yaml"
 
 	// ✅ Load from YAML (case preserved)
@@ -251,14 +194,14 @@ func LoadConfig2() (*Config, error) {
 			log.Printf("🔄 Config file changed (unknown type): %#v", event)
 		}
 
-		reloadConfig2(configFile)
+		reloadConfig(configFile)
 	})
 
 	return cfg, nil
 }
 
 // reloadConfig reloads YAML when changed (preserving case)
-func reloadConfig2(path string) {
+func reloadConfig(path string) {
 	cfgLock.Lock()
 	defer cfgLock.Unlock()
 

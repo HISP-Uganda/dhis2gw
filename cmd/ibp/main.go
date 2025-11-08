@@ -14,7 +14,7 @@ import (
 var tokens = &TokenStore{}
 
 func main() {
-	cfg, err := LoadConfig2()
+	cfg, err := LoadConfig()
 	if err != nil {
 		log.Fatalf("❌ Failed to load config: %v", err)
 	}
