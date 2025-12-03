@@ -1,13 +1,28 @@
 package clients
 
 import (
+	"net/url"
+	"sync"
+	"time"
+
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
 )
 
 type Client struct {
-	RestClient *resty.Client
-	BaseURL    string
+	RestClient    *resty.Client
+	BaseURL       string
+	MaxRetries    int
+	BaseDelay     time.Duration
+	RateLimit     time.Duration
+	Burst         int
+	tokens        chan struct{}
+	lastCall      time.Time
+	rateInit      sync.Once
+	mu            sync.Mutex
+	BatchSize     int // Optional: for batching requests
+	FailDir       string
+	RetentionDays int
 }
 
 type Server struct {
@@ -69,6 +84,20 @@ func (c *Client) PatchResource(resourcePath string, data interface{}) (*resty.Re
 		Patch(resourcePath)
 	if err != nil {
 		log.Errorf("Error when calling `PatchResource`: %v", err)
+	}
+	return resp, err
+}
+
+func (c *Client) GetResourceValues(path string, queryParams url.Values) (*resty.Response, error) {
+	request := c.RestClient.R()
+
+	if queryParams != nil {
+		request.SetQueryParamsFromValues(queryParams)
+	}
+
+	resp, err := request.Get(path)
+	if err != nil {
+		log.WithError(err).Infof("Error when calling `GetResource`: %v", err)
 	}
 	return resp, err
 }

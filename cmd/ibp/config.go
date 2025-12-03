@@ -1,7 +1,6 @@
 package main
 
 import (
-	"dhis2gw/clients"
 	"dhis2gw/config"
 	"dhis2gw/models"
 	"dhis2gw/utils"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/fsnotify/fsnotify"
 	"github.com/goccy/go-json"
 	"github.com/knadh/koanf/parsers/yaml"
@@ -90,12 +90,12 @@ type StageConfig struct {
 
 // Config represents ibp.yml structure
 type Config struct {
-	Debug         bool   `yaml:"debug"`
-	DHIS2URL      string `yaml:"dhis2_url" mapstructure:"dhis2_url"`
-	DHIS2User     string `yaml:"dhis2_user" mapstructure:"dhis2_user"`
-	DHIS2Password string `yaml:"dhis2_password" mapstructure:"dhis2_password"`
-	SourceName    string `yaml:"source_name" mapstructure:"source_name"`
-	InstanceName  string `yaml:"instance_name" mapstructure:"instance_name"`
+	Debug         bool   `yaml:"Debug"`
+	DHIS2URL      string `yaml:"DHIS2URL" mapstructure:"dhis2_url"`
+	DHIS2User     string `yaml:"DHIS2User" mapstructure:"dhis2_user"`
+	DHIS2Password string `yaml:"DHIS2Password" mapstructure:"dhis2_password"`
+	SourceName    string `yaml:"SourceName" mapstructure:"source_name"`
+	InstanceName  string `yaml:"InstanceName" mapstructure:"instance_name"`
 
 	Server struct {
 		BaseURL                string `yaml:"BaseURL"`
@@ -109,16 +109,18 @@ type Config struct {
 	// Mapping in the configuration file
 	Program struct {
 		OrganisationUnitPath    string                 `yaml:"OrganisationUnitPath" mapstructure:"organisation_unit_path"`
-		SearchAttributes        string                 `yaml:"SearchAttributes" mapstructure:"search_attributes"`
+		SearchAttribute         string                 `yaml:"SearchAttribute" mapstructure:"search_attribute"`
 		ProgramID               string                 `yaml:"ProgramID"             mapstructure:"program_id"`
 		TrackedEntityType       string                 `yaml:"TrackedEntityType"    mapstructure:"tracked_entity_type"`
 		TrackedEntityAttributes map[string]string      `yaml:"TrackedEntityAttributes" mapstructure:"tracked_entity_attributes"`
 		Stages                  map[string]StageConfig `yaml:"Stages" mapstructure:"stages"` // key = alias (registration, monitoring…)
 	} `yaml:"program" mapstructure:"program"`
+	Defaults map[string]interface{} `yaml:"Defaults"`
 
 	// These are necessary for validation not present in the configuration file
 	ProgramConfig                     *models.Program
-	MandatoryTrackedEntityAttributes  []string
+	TrackedEntityTypeConfig           *models.TrackedEntityType
+	MandatoryTrackedEntityAttributes  map[string]struct{}
 	MandatoryProgramStageDataElements map[string][]string
 }
 
@@ -172,6 +174,9 @@ func LoadConfig() (*Config, error) {
 	c.DHIS2Password = utils.CoalesceString(
 		config.DHIS2GWConf.API.DHIS2Password, "district",
 	)
+	c.Defaults = map[string]any{
+		"xR2SRSZxDSl": "true",
+	}
 
 	// ✅ Set global config safely
 	cfgLock.Lock()
@@ -188,10 +193,15 @@ func LoadConfig() (*Config, error) {
 
 		// The event type depends on the underlying watcher.
 		// For fsnotify it will be an fsnotify.Event, so we can assert:
-		if e, ok := event.(fsnotify.Event); ok {
-			log.Printf("🔄 Config file changed: %s", e.Name)
-		} else {
-			log.Printf("🔄 Config file changed (unknown type): %#v", event)
+		switch e := event.(type) {
+		case fsnotify.Event:
+			log.Printf("🔄 Config file changed (fsnotify): %s", e.Name)
+		case string:
+			log.Printf("🔄 Config file changed (string): %s", e)
+		case nil:
+			log.Printf("🔄 Config file changed (nil event)")
+		default:
+			log.Printf("🔄 Config file changed (unknown): %#v", e)
 		}
 
 		reloadConfig(configFile)
@@ -229,14 +239,14 @@ func (c *Config) Timeout() time.Duration {
 	return time.Duration(c.Server.TimeoutSeconds) * time.Second
 }
 
-func LoadProgramConfig(client *clients.Client) {
+func LoadProgramConfig(client *sdk.Client) {
 	if cfg.Program.ProgramID == "" || !utils.ValidUID(cfg.Program.ProgramID) {
 		return
 	}
 	//var fields = "programStages[id,name,programStageDataElements[compulsary,dataElement[id,name,valueType,optionSetValue,optionSet]]]," +
 	//	"programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,name,optionSetValue,optionSet]]"
 
-	var fields = "id,name,programStages[id,name,programStageDataElements[compulsary,dataElement[id,name,valueType,optionSetValue,optionSet[id,options[id,code,name]]]]]," +
+	var fields = "id,name,programStages[id,name,programStageDataElements[compulsory,dataElement[id,name,valueType,optionSetValue,optionSet[id,options[id,code,name]]]]]," +
 		"programTrackedEntityAttributes[mandatory,valueType,trackedEntityAttribute[id,name,optionSetValue,optionSet[id,options[id,code,name]]]]"
 	resp, err := client.GetResource(fmt.Sprintf("programs/%s", cfg.Program.ProgramID),
 		map[string]string{
@@ -253,11 +263,15 @@ func LoadProgramConfig(client *clients.Client) {
 		}
 		// Immediately get the mandatory attributes and data elements
 		if cfg.ProgramConfig != nil {
-			cfg.MandatoryTrackedEntityAttributes = []string{}
+			cfg.MandatoryTrackedEntityAttributes = map[string]struct{}{}
 			for _, a := range cfg.ProgramConfig.ProgramTrackedEntityAttributes {
 				if a.Mandatory {
-					cfg.MandatoryTrackedEntityAttributes = append(
-						cfg.MandatoryTrackedEntityAttributes, a.TrackedEntityAttribute.ID)
+					_, exists := cfg.MandatoryTrackedEntityAttributes[a.TrackedEntityAttribute.ID]
+					if !exists {
+						cfg.MandatoryTrackedEntityAttributes[a.TrackedEntityAttribute.ID] = struct{}{}
+					}
+					//cfg.MandatoryTrackedEntityAttributes = append(
+					//	cfg.MandatoryTrackedEntityAttributes, a.TrackedEntityAttribute.ID)
 				}
 			}
 			cfg.MandatoryProgramStageDataElements = make(map[string][]string)
@@ -272,4 +286,40 @@ func LoadProgramConfig(client *clients.Client) {
 		}
 
 	}
+}
+
+func LoadTrackedEntityTypeConfig(client *sdk.Client) {
+	if cfg.Program.TrackedEntityType == "" || !utils.ValidUID(cfg.Program.TrackedEntityType) {
+		return
+	}
+	var fields = "id,name,trackedEntityTypeAttributes[mandatory,valueType,trackedEntityAttribute[id,name]]"
+	resp, err := client.GetResource(fmt.Sprintf("trackedEntityTypes/%s", cfg.Program.TrackedEntityType),
+		map[string]string{
+			"fields": fields,
+		})
+	if err != nil || resp == nil {
+		log.Infof("Failed to load tracked entity type from DHIS2!!!")
+		return
+	}
+
+	if resp.StatusCode() == http.StatusOK {
+		er := json.Unmarshal(resp.Body(), &cfg.TrackedEntityTypeConfig)
+		if er != nil {
+			log.Errorf("Failed to load tracked entity type configuration from DHIS2: %v", er)
+		}
+	}
+
+	if cfg.TrackedEntityTypeConfig != nil {
+		for _, a := range cfg.TrackedEntityTypeConfig.TrackedEntityTypeAttributes {
+			if a.Mandatory {
+				// add a to cfg.MandatoryTrackedEntityAttributes if not existing
+				_, exists := cfg.MandatoryTrackedEntityAttributes[a.TrackedEntityAttribute.ID]
+				if !exists {
+					cfg.MandatoryTrackedEntityAttributes[a.TrackedEntityAttribute.ID] = struct{}{}
+				}
+
+			}
+		}
+	}
+
 }

@@ -3,9 +3,13 @@ package clients
 import (
 	"dhis2gw/config"
 	"errors"
+	"fmt"
+	"net/url"
 	"strings"
 
+	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/HISP-Uganda/go-dhis2-sdk/dhis2/schema"
+	"github.com/buger/jsonparser"
 	"github.com/go-resty/resty/v2"
 	"github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
@@ -130,4 +134,85 @@ func PushDataValues(dataValues []schema.DataValue) error {
 
 func GetDhis2Client() *Client {
 	return Dhis2Client
+}
+
+type MyTrackedEntity struct {
+	TrackedEntity     string        `json:"trackedEntity"`
+	OrgUnit           string        `json:"orgUnit"`
+	TrackedEntityType string        `json:"trackedEntityType"`
+	Attributes        []MyAttribute `json:"attributes"`
+	Enrollments       []Enrollment  `json:"enrollments,omitempty"`
+}
+type MyAttribute struct {
+	Attribute string `json:"attribute"`
+	Value     string `json:"value"`
+	ValueType string `json:"valueType,omitempty"`
+}
+
+type Enrollment struct {
+	Enrollment string  `json:"enrollment,omitempty"`
+	Program    string  `json:"program,omitempty"`
+	OrgUnit    string  `json:"orgUnit,omitempty"`
+	Events     []Event `json:"events,omitempty"`
+}
+
+type Event struct {
+	Event        string             `json:"event"`
+	Program      string             `json:"program,omitempty"`
+	ProgramStage string             `json:"programStage,omitempty"`
+	orgUnit      string             `json:"orgUnit,omitempty"`
+	OccurredAt   string             `json:"occurredAt,omitempty"`
+	ScheduledAt  string             `json:"scheduledAt,omitempty"`
+	DataValues   []schema.DataValue `json:"dataValues,omitempty"`
+}
+
+func SearchTrackedEntity(
+	dhis2client *sdk.Client,
+	orgUnit string,
+	program string,
+	attrs map[string]string, // attributeUID → value
+	operator string,
+) (bool, []MyTrackedEntity) {
+	// Must use url.Values to support multiple "filter" params
+	params := url.Values{}
+	params.Set("orgUnit", orgUnit)
+	params.Set("program", program)
+	params.Set("ouMode", "SELECTED")
+	params.Set("orgUnitMode", "SELECTED")
+
+	// Default operator = EQ
+	if operator == "" {
+		operator = "EQ"
+	}
+
+	// Add all filters as separate entries
+	for attrUID, val := range attrs {
+		filterExpr := fmt.Sprintf("%s:%s:%s", attrUID, operator, val)
+		params.Add("filter", filterExpr)
+	}
+
+	// DHIS2 endpoint
+	endpoint := "/tracker/trackedEntities"
+
+	// Use the client's method, but adapt it to accept url.Values
+	resp, err := dhis2client.GetResourceValues(endpoint, params)
+	if err != nil {
+		log.Errorf("SearchTE error calling GetResource: %v", err)
+		return false, nil
+	}
+
+	// Extract "instances" array
+	v, _, _, err := jsonparser.Get(resp.Body(), "instances")
+	if err != nil {
+		log.Errorf("SearchTE error getting instances: %v", err)
+		return false, nil
+	}
+
+	var instances []MyTrackedEntity
+	if err := json.Unmarshal(v, &instances); err != nil {
+		log.WithFields(log.Fields{"Instances": string(v)}).Errorf("SearchTE unmarshal error: %v", err)
+		return false, nil
+	}
+
+	return len(instances) > 0, instances
 }

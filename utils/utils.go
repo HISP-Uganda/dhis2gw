@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	jsonpatch "github.com/evanphx/json-patch"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"math"
 	"math/rand"
@@ -19,6 +17,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	jsonpatch "github.com/evanphx/json-patch"
+	log "github.com/sirupsen/logrus"
 )
 
 func PatchJSONObject(originalJSON, patchJSON []byte) []byte {

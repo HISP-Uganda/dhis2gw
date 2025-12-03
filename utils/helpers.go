@@ -16,20 +16,23 @@ const codeSize = 11
 
 // GenerateUID return a Unique ID for our resources
 func GenerateUID() string {
-	source := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(source) // Creates a new instance of rand.Rand, safe for concurrent use
+	// Use crypto/rand for better uniqueness guarantees in production systems.
+	// For this example's use of math/rand, we use the recommended initialization
+	// for non-concurrent scenarios where performance is key.
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	numberOfCodePoints := len(allowedCharacters)
+	numberOfAllowedChars := len(allowedCharacters)
+	numberOfAlphabetChars := len(alphabet)
 
 	var s strings.Builder
 	s.Grow(codeSize) // Pre-allocate memory to improve performance
 
-	// Ensure the first character is an uppercase letter from the alphabet
-	s.WriteByte(allowedCharacters[r.Intn(26)] - 32) // Convert to uppercase
+	// Ensure the first character is a letter from the alphabet
+	s.WriteByte(alphabet[r.Intn(numberOfAlphabetChars)])
 
-	// Generate the rest of the UID
+	// Generate the rest of the UID using all allowed characters
 	for i := 1; i < codeSize; i++ {
-		s.WriteByte(allowedCharacters[r.Intn(numberOfCodePoints)])
+		s.WriteByte(allowedCharacters[r.Intn(numberOfAllowedChars)])
 	}
 
 	return s.String()
@@ -100,13 +103,13 @@ func FilterValidUIDs(dataValues map[string]string) map[string]string {
 }
 
 func FilterValidUIDsSlice(dataValues map[string]string) []string {
-	values := make([]string, 0, len(dataValues))
-	for _, v := range dataValues {
-		if ValidUID(v) {
-			values = append(values, v)
+	keys := make([]string, 0, len(dataValues))
+	for k := range dataValues {
+		if ValidUID(k) {
+			keys = append(keys, k)
 		}
 	}
-	return values
+	return keys
 }
 
 // CoalesceString returns the first non-empty string
@@ -135,17 +138,33 @@ func AnyMissing(subset, set []string) bool {
 }
 
 // MissingStrings returns a slice of strings from subset that are not found in set.
-func MissingStrings(subset, set []string) []string {
-	setMap := make(map[string]struct{}, len(set))
-	for _, s := range set {
-		setMap[s] = struct{}{}
-	}
-
+func MissingStrings(subset []string, set map[string]struct{}) []string {
 	var missing []string
+
 	for _, s := range subset {
-		if _, ok := setMap[s]; !ok {
+		if _, ok := set[s]; !ok {
 			missing = append(missing, s)
 		}
 	}
+
 	return missing
+}
+
+// SetDifference returns keys in set that are not found in subset.
+func SetDifference(subset []string, set map[string]struct{}) []string {
+	// Convert subset slice to a fast lookup map
+	subsetMap := make(map[string]struct{}, len(subset))
+	for _, s := range subset {
+		subsetMap[s] = struct{}{}
+	}
+
+	// Check which keys in set are missing from subset
+	var extras []string
+	for key := range set {
+		if _, ok := subsetMap[key]; !ok {
+			extras = append(extras, key)
+		}
+	}
+
+	return extras
 }

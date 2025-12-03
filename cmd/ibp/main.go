@@ -1,12 +1,13 @@
 package main
 
 import (
-	"dhis2gw/clients"
+	// "dhis2gw/clients"
 	"dhis2gw/config"
 	"dhis2gw/utils"
 	"net/http"
 	"time"
 
+	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 )
@@ -27,20 +28,29 @@ func main() {
 	if err != nil {
 		log.Fatal("Login failed:", err)
 	}
+	if loginResp.AccessToken == "" {
+		log.Fatal("Login failed: no access token")
+	}
 	tokens.SetTokens(loginResp.AccessToken, loginResp.RefreshToken)
 
-	dhis2Server := clients.Server{
-		BaseUrl:    utils.CoalesceString(cfg.DHIS2URL, config.DHIS2GWConf.API.DHIS2BaseURL, "https://play.im.dhis2.org/stable-2-42-3/api/"),
-		Username:   utils.CoalesceString(cfg.DHIS2User, config.DHIS2GWConf.API.DHIS2User, "admin"),
-		Password:   utils.CoalesceString(cfg.DHIS2Password, config.DHIS2GWConf.API.DHIS2Password, "district"),
-		AuthMethod: "Basic",
-	}
-	dhis2Client, err2 := dhis2Server.NewDhis2Client()
-	if err2 != nil || dhis2Client == nil {
-		log.Errorf("Failed to create new dhis2 client: %v", err2)
+	dhis2Client := sdk.NewClient(
+		utils.CoalesceString(cfg.DHIS2URL, config.DHIS2GWConf.API.DHIS2BaseURL, "https://play.im.dhis2.org/stable-2-42-3/api/"),
+		utils.CoalesceString(cfg.DHIS2User, config.DHIS2GWConf.API.DHIS2User, "admin"),
+		utils.CoalesceString(cfg.DHIS2Password, config.DHIS2GWConf.API.DHIS2Password, "district"))
+	//sdkClient.GetResource()
+
+	//dhis2Server := clients.Server{
+	//	BaseUrl:    utils.CoalesceString(cfg.DHIS2URL, config.DHIS2GWConf.API.DHIS2BaseURL, "https://play.im.dhis2.org/stable-2-42-3/api/"),
+	//	Username:   utils.CoalesceString(cfg.DHIS2User, config.DHIS2GWConf.API.DHIS2User, "admin"),
+	//	Password:   utils.CoalesceString(cfg.DHIS2Password, config.DHIS2GWConf.API.DHIS2Password, "district"),
+	//	AuthMethod: "Basic",
+	//}
+	//dhis2Client, err2 := dhis2Server.NewDhis2Client()
+	if dhis2Client.Resty == nil {
+		log.Errorf("Failed to create new dhis2 client")
 		return
 	}
-	r, err3 := dhis2Client.GetResource("me", map[string]string{"level": "1", "fields": "id", "pageSize": "1"})
+	r, err3 := dhis2Client.GetResource("organisationUnits", map[string]string{"level": "1", "fields": "id", "pageSize": "1"})
 	if err3 != nil {
 		log.Errorf("Failed to authenticate to DHIS2 instance: %v", err3)
 	}
@@ -53,6 +63,9 @@ func main() {
 	// load program
 	LoadProgramConfig(dhis2Client)
 	log.Infof("Loaded ProgramConfig: %v", utils.ToPrettyJSON(cfg.ProgramConfig.Name))
+	// load this after programConfig
+	LoadTrackedEntityTypeConfig(dhis2Client)
+	log.Infof("Loaded TrackedEntityTypeConfig: %v", utils.ToPrettyJSON(cfg.TrackedEntityTypeConfig))
 	if &cfg.ProgramConfig != nil {
 		cfg.ProgramConfig.PrintMandatoryDetails(true, true)
 		log.Infof("Mandatory Attr: %v", utils.ToPrettyJSON(cfg.MandatoryTrackedEntityAttributes))
@@ -65,9 +78,9 @@ func main() {
 	s := gocron.NewScheduler(time.UTC)
 	_, err1 := s.Cron(cfg.Server.DataSyncCronExpression).Do(func() {
 		log.Info("Running sync projects schedule")
-		syncErr := SyncProjects(client, cfg.Server.BaseURL)
+		syncErr := SyncProjects(client, cfg.Server.BaseURL, dhis2Client)
 		if syncErr != nil {
-			log.Fatalf("Failed to sync projects: %v", syncErr)
+			log.Errorf("Failed to sync projects: %v", syncErr)
 		}
 	})
 	if err1 != nil {

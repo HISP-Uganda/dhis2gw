@@ -12,6 +12,7 @@ import (
 type Identifiable struct {
 	ID   string `json:"id,omitempty"`
 	Name string `json:"name,omitempty"`
+	Code string `json:"code,omitempty"`
 }
 type OptionSet struct {
 	ID      string         `json:"id,omitempty"`
@@ -29,6 +30,19 @@ type TrackedEntityAttribute struct {
 	Name           string    `json:"name,omitempty"`
 	OptionSetValue bool      `json:"optionSetValue,omitempty"`
 	OptionSet      OptionSet `json:"optionSet,omitempty"`
+}
+
+type TrackedEntityTypeAttribute struct {
+	ID                     string                 `json:"id"`
+	Name                   string                 `json:"name,omitempty"`
+	Mandatory              bool                   `json:"mandatory,omitempty"`
+	TrackedEntityAttribute TrackedEntityAttribute `json:"trackedEntityAttribute,omitempty"`
+}
+
+type TrackedEntityType struct {
+	ID                          string                       `json:"id"`
+	Name                        string                       `json:"name,omitempty"`
+	TrackedEntityTypeAttributes []TrackedEntityTypeAttribute `json:"trackedEntityTypeAttributes,omitempty"`
 }
 
 type ProgramTrackedEntityAttribute struct {
@@ -74,6 +88,16 @@ func (ps ProgramStage) GetMandatoryDataElements() []DataElement {
 		}
 	}
 	return elements
+}
+
+func (t TrackedEntityType) GetMandatoryTrackedEntityAttributes() []TrackedEntityAttribute {
+	var attrs []TrackedEntityAttribute
+	for _, teta := range t.TrackedEntityTypeAttributes {
+		if teta.Mandatory {
+			attrs = append(attrs, teta.TrackedEntityAttribute)
+		}
+	}
+	return attrs
 }
 
 // PrintMandatoryDetails prints tracked entity attributes and data elements.

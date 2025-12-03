@@ -91,7 +91,7 @@ func fetchOutturns(ctx context.Context, client *pbs.Client, fy string) error {
 		return err
 	}
 	log.Infof("pbs-sync: got %d outturn rows", len(resp.CgBudgetOutturnByFiscalYear))
-	for _, row := range resp.CgBudgetOutturnByFiscalYear[:10] {
+	for _, row := range resp.CgBudgetOutturnByFiscalYear {
 		log.Infof("VoteCode=%s Vote=%s FY=%s Prog=%s Approved=%.2f Q1Exp=%.2f",
 			row.Vote_Code, row.Vote_Name, row.Fiscal_Year, row.Programme_Name, row.ApprovedBudget, row.Q1Expenditure)
 		dvs, dvsError := BuildPBSDataValues2(row, &config.DHIS2GWConf)

@@ -27,6 +27,7 @@ type RefreshRequest struct {
 type RefreshResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+	Message      string `json:"message,omitempty"`
 }
 
 func login(client *resty.Client, baseURL, username, password string) (*LoginResponse, error) {
