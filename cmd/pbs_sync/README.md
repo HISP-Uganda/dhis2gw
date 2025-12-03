@@ -98,3 +98,27 @@ After installing the `.deb` package, the binary is placed in `/usr/bin/pbs-sync`
 **Service Management**
 
 The package installs a systemd service named `pbs-sync.service`.
+
+**Start the service**
+```bash
+sudo systemctl start pbs-sync
+```
+**Stop the service**
+```bash
+sudo systemctl stop pbs-sync
+```
+**Restart the service**
+```bash
+sudo systemctl restart pbs-sync
+```
+
+
+**View service status**
+```bash
+sudo systemctl status pbs-sync
+```
+
+**View logs**
+```bash
+journalctl -u pbs-sync -f
+```
