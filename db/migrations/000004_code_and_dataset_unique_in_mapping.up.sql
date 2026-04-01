@@ -1,1 +1,1 @@
-ALTER TABLE dhis2_mappings ADD CONSTRAINT unique_code_dataset UNIQUE (code, dataset)
+-- ALTER TABLE dhis2_mappings ADD CONSTRAINT unique_code_source_instance_what UNIQUE (code, source_name, instance_name, what);

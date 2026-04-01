@@ -9,19 +9,33 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
+	"sync/atomic"
 	"time"
 )
 
 var (
-	err      error
 	Location *time.Location
+	location atomic.Pointer[time.Location]
 )
 
-func init() {
-	Location, err = time.LoadLocation(config.DHIS2GWConf.Server.TimeZone)
+func InitLocation() error {
+	loc, err := time.LoadLocation(config.MustGet().Config.Server.TimeZone)
 	if err != nil {
-		log.Errorln(err)
+		return err
 	}
+	location.Store(loc)
+	Location = loc
+	return nil
+}
+
+func currentLocation() *time.Location {
+	if loc := location.Load(); loc != nil {
+		return loc
+	}
+	if Location != nil {
+		return Location
+	}
+	return time.UTC
 }
 
 type NullTime struct {
@@ -185,7 +199,7 @@ func (s *Schedule) SetNextRun(tx *sqlx.Tx, nextRun time.Time) error {
 
 // SetLastRun set the last time the schedule is run
 func (s *Schedule) SetLastRun(tx *sqlx.Tx) error {
-	s.LastRunAt = NullTime{sql.NullTime{Time: time.Now().In(Location), Valid: true}}
+	s.LastRunAt = NullTime{sql.NullTime{Time: time.Now().In(currentLocation()), Valid: true}}
 	_, err := tx.NamedExec(`UPDATE schedules SET last_run_at = :last_run_at WHERE id = :id`, s)
 	return err
 }
@@ -193,7 +207,7 @@ func (s *Schedule) SetLastRun(tx *sqlx.Tx) error {
 // UpdateStatus updates the status of the schedule
 func (s *Schedule) UpdateStatus(tx *sqlx.Tx, status string) error {
 	s.Status = status
-	s.Updated = time.Now().In(Location)
+	s.Updated = time.Now().In(currentLocation())
 	_, err := tx.NamedExec(`UPDATE schedules SET status = :status, updated = :updated WHERE id = :id`, s)
 	return err
 }
@@ -201,15 +215,15 @@ func (s *Schedule) UpdateStatus(tx *sqlx.Tx, status string) error {
 // Deactivate deactivates the schedule
 func (s *Schedule) Deactivate(tx *sqlx.Tx) error {
 	s.IsActive = false
-	s.Updated = time.Now().In(Location)
+	s.Updated = time.Now().In(currentLocation())
 	_, err := tx.NamedExec(`UPDATE schedules SET is_active = :is_active, updated = :updated WHERE id = :id`, s)
 	return err
 }
 
 // UpdateRunDetails updates the schedule run details
 func (s *Schedule) UpdateRunDetails(tx *sqlx.Tx, status string, nextRun time.Time) error {
-	s.LastRunAt = NullTime{sql.NullTime{Time: time.Now().In(Location), Valid: true}}
-	s.Updated = time.Now().In(Location)
+	s.LastRunAt = NullTime{sql.NullTime{Time: time.Now().In(currentLocation()), Valid: true}}
+	s.Updated = time.Now().In(currentLocation())
 	s.Status = status
 	s.NextRunAt = nextRun
 	_, err := tx.NamedExec(
@@ -227,7 +241,8 @@ func DeleteSchedule(db *sqlx.DB, id int64) error {
 
 // ScheduleDue is a method on Schedule that returns whether the schedule can now run
 func (s *Schedule) ScheduleDue() bool {
-	return s.IsActive && (s.NextRunAt.Before(time.Now().In(Location)) || s.NextRunAt.Equal(time.Now().In(Location)))
+	now := time.Now().In(currentLocation())
+	return s.IsActive && (s.NextRunAt.Before(now) || s.NextRunAt.Equal(now))
 }
 
 func CreateAsyncJobSchedule(
@@ -238,7 +253,8 @@ func CreateAsyncJobSchedule(
 	jobType string,
 	jobID string,
 ) (int64, error) {
-	repeatInterval := config.DHIS2GWConf.Server.Dhis2JobStatusCheckInterval
+	repeatInterval := config.MustGet().Config.Server.Dhis2JobStatusCheckInterval
+	loc := currentLocation()
 	var schedule = Schedule{
 		Params:         []byte("{}"),
 		ScheduleType:   "dhis2_async_job_check",
@@ -253,8 +269,8 @@ func CreateAsyncJobSchedule(
 		AsyncJobType:   jobType,
 		AsyncJobID:     jobID,
 		CreatedBy:      nil,
-		Created:        time.Now().In(Location),
-		Updated:        time.Now().In(Location),
+		Created:        time.Now().In(loc),
+		Updated:        time.Now().In(loc),
 	}
 	return CreateScheduleTx(tx, schedule)
 

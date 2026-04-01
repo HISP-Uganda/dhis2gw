@@ -132,6 +132,7 @@ query CgPiapIndicatorProjectionsByFiscalYear($fy: String!) {
       Department_Name
       Budget_Output_Code
       Budget_Output_Description
+      Target_Y1
       PIAP_Output_Code
       PIAP_Output_Description
       PIAP_Output_Indicator_Code

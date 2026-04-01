@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -32,174 +34,145 @@ var SkipFectchingByDate *bool
 var DIS2GWDHIS2ServersConfigMap = make(map[string]ServerConf)
 var ShowVersion *bool
 
+type CLIFlags struct {
+	ConfigFile             string
+	ForceSync              bool
+	SkipSync               bool
+	StartDate              string
+	EndDate                string
+	DisableHTTPServer      bool
+	SkipRequestProcessing  bool
+	SkipScheduleProcessing bool
+	SkipFetchingByDate     bool
+	ShowVersion            bool
+}
+
+type RuntimeConfig struct {
+	Config        Config
+	Flags         CLIFlags
+	ServerConfigs map[string]ServerConf
+}
+
+var current atomic.Pointer[RuntimeConfig]
+var flagSetupOnce sync.Once
+var flagParseOnce sync.Once
+var registeredConfigFile *string
+
 const VERSION = "1.0.0"
 
-func init() {
-	// ./dhis2gw --config-file /etc/dhis2gw/dhis2gw.yml
-	var configFilePath, configDir, conf_dDir string
-	currentOS := runtime.GOOS
-	switch currentOS {
-	case "windows":
-		configDir = "C:\\ProgramData\\dhis2gw"
-		configFilePath = "C:\\ProgramData\\dhis2gw\\dhis2gw.yml"
-		conf_dDir = "C:\\ProgramData\\dhis2gw\\conf.d"
-	case "darwin", "linux":
-		configFilePath = "/etc/dhis2gw/dhis2gw.yml"
-		configDir = "/etc/dhis2gw/"
-		conf_dDir = "/etc/dhis2gw/conf.d" // for the conf.d directory where to dump server confs
-	default:
-		fmt.Println("Unsupported operating system")
-		return
-	}
-
-	configFile := flag.String("config-file", configFilePath,
-		"The path to the configuration file of the application")
-
-	startDate := time.Now().Add(-24 * time.Hour).Format("2006-01-02")
-	endDate := time.Now().Format("2006-01-02")
-	ForceSync = flag.Bool("force-sync", false, "Whether to forcefully sync organisation unit hierarchy")
-	SkipSync = flag.Bool("skip-sync", false, "Whether to skip measurements sync.")
-	StartDate = flag.String("start-date", startDate, "Date from which to start fetching data (YYYY-MM-DD)")
-	EndDate = flag.String("end-date", endDate, "Date until which to fetch data (YYYY-MM-DD)")
-	DisableHTTPServer = flag.Bool("disable-http-server", false, "Whether to disable HTTP Server")
-	SkipRequestProcessing = flag.Bool("skip-request-processing", false, "Whether to skip requests processing")
-	SkipScheduleProcessing = flag.Bool("skip-schedule-processing", false, "Whether to skip schedule processing")
-	SkipFectchingByDate = flag.Bool("skip-fetching-by-date", false, "Whether to skip fetching measurements by start and end date")
-	ShowVersion = flag.Bool("version", false, "Display version of DIS2GW Integrator")
-	// FakeSyncToBaseDHIS2 = flag.Bool("fake-sync-to-base-dhis2", false, "Whether to fake sync to base DHIS2")
-
-	flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
-	flag.Parse()
-	if *ShowVersion {
-		fmt.Println("OneHealth Gateway: ", VERSION)
-		os.Exit(1)
-	}
-
-	viper.SetConfigName("dhis2gw")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(configDir)
-	viper.AutomaticEnv()
-
-	if len(*configFile) > 0 {
-		viper.SetConfigFile(*configFile)
-		// log.Printf("Config File %v", *configFile)
-	}
-
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// log.Fatalf("Configuration File: %v Not Found", *configFile, err)
-			panic(fmt.Errorf("Fatal Error %w \n", err))
-
-		} else {
-			log.Fatalf("Error Reading Config: %v", err)
-
-		}
-	}
-
-	DHIS2GWConf.API.AggregateMappingScheme = "CODE" // Default mapping scheme
-	DHIS2GWConf.PBS.Sync.Window = 15 * time.Minute
-	DHIS2GWConf.PBS.Sync.Interval = 1 * time.Minute
-	DHIS2GWConf.PBS.Sync.PageSize = 200
-	DHIS2GWConf.PBS.DefaultCategoryOptionCombo = "HllvX50cXC0"
-	DHIS2GWConf.PBS.CategoryOptionCombos = map[string]DHIS2CategoryOptionCombo{
-		"approved": {
-			Name:   "Budget approved",
-			UID:    "abgX6hsxvaT",
-			Option: "UHhWlfyy5bm",
-			Combo:  "R8svkeGLwE3",
-		},
-		"planned": {
-			Name:   "Budget planned",
-			UID:    "Hwbi4DDMjjd",
-			Option: "YE32G6hzVDl",
-			Combo:  "R8svkeGLwE3",
-		},
-		"release": {
-			Name:   "Release",
-			UID:    "FcZgA2sys1F",
-			Option: "lAyLQi6IqVF",
-			Combo:  "R8svkeGLwE3",
-		},
-		"expenditure": {
-			Name:   "Spent",
-			UID:    "C26fobnyPLc",
-			Option: "NfADZSy1VzB",
-			Combo:  "R8svkeGLwE3",
-		},
-	}
-	// I want a time.Time from string "2023-01-01T00:00:00Z", suggested format is time.RFC3339
-	DHIS2GWConf.PBS.Sync.Since, _ = time.Parse(time.RFC3339, "2023-01-01T00:00:00Z")
-	DHIS2GWConf.PBS.Sync.Until, _ = time.Parse(time.RFC3339, "2023-12-31T23:59:59Z")
-	DHIS2GWConf.PBS.InstanceName = "train.ndpme"
-	DHIS2GWConf.Server.RedisDB = 5
-	DHIS2GWConf.Server.QueuePrefix = ""
-
-	// err := viper.Unmarshal(&DHIS2GWConf)
-
-	err := viper.Unmarshal(&DHIS2GWConf, func(dc *mapstructure.DecoderConfig) {
-		dc.DecodeHook = mapstructure.ComposeDecodeHookFunc(
-			// add duration hook if you also have timeouts:
-			mapstructure.StringToTimeDurationHookFunc(),
-			stringToTimeHookWithLocal(time.Local, // or time.FixedZone("EAT", 3*3600)
-				time.RFC3339, time.RFC3339Nano,
-				"2006-01-02 15:04:05", "2006-01-02",
-			),
-		)
-	})
+func Load() (*RuntimeConfig, error) {
+	flags, err := parseFlags()
 	if err != nil {
-		log.Fatalf("unable to decode into struct, %v", err)
+		return nil, err
+	}
+	if flags.ShowVersion {
+		fmt.Println("OneHealth Gateway:", VERSION)
+		os.Exit(0)
 	}
 
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Println("Config file changed:", e.Name)
-		err = viper.ReadInConfig()
-		if err != nil {
-			log.Fatalf("unable to reread configuration into global conf: %v", err)
-		}
-		_ = viper.Unmarshal(&DHIS2GWConf)
-	})
-	viper.WatchConfig()
-
-	v := viper.New()
-	v.SetConfigType("json")
-
-	fileList, err := getFilesInDirectory(conf_dDir)
+	cfg, err := loadMainConfig(flags.ConfigFile)
+	if err != nil {
+		return nil, err
+	}
+	serverConfigs, err := loadServerConfigs()
 	if err != nil {
 		log.WithError(err).Info("Error reading directory")
 	}
-	// Loop through the files and read each one
-	for _, file := range fileList {
-		v.SetConfigFile(file)
 
-		if err := v.ReadInConfig(); err != nil {
-			log.WithError(err).WithField("File", file).Error("Error reading config file:")
-			continue
-		}
+	return &RuntimeConfig{
+		Config:        cfg,
+		Flags:         flags,
+		ServerConfigs: serverConfigs,
+	}, nil
+}
 
-		// Unmarshal the config data into your structure
-		var config ServerConf
-		if err := v.Unmarshal(&config); err != nil {
-			log.WithError(err).WithField("File", file).Error("Error unmarshaling config file:")
-			continue
-		}
-		DIS2GWDHIS2ServersConfigMap[config.Name] = config
-
-		// Now you can use the config structure as needed
-		// fmt.Printf("Configuration from %s: %+v\n", file, config)
+func Set(runtimeCfg *RuntimeConfig) {
+	if runtimeCfg == nil {
+		return
 	}
-	v.OnConfigChange(func(e fsnotify.Event) {
-		if err := v.ReadInConfig(); err != nil {
-			log.WithError(err).WithField("File", e.Name).Error("Error reading config file:")
-		}
+	current.Store(runtimeCfg)
+	DHIS2GWConf = runtimeCfg.Config
+	DIS2GWDHIS2ServersConfigMap = cloneServerConfigs(runtimeCfg.ServerConfigs)
+	syncLegacyFlagPointers(runtimeCfg.Flags)
+}
 
-		// Unmarshal the config data into your structure
-		var config ServerConf
-		if err := v.Unmarshal(&config); err != nil {
-			log.WithError(err).WithField("File", e.Name).Fatalf("Error unmarshaling config file:")
+func Get() *RuntimeConfig {
+	return current.Load()
+}
+
+func MustGet() *RuntimeConfig {
+	runtimeCfg := Get()
+	if runtimeCfg == nil {
+		panic("config not initialized")
+	}
+	return runtimeCfg
+}
+
+func Reload() (*RuntimeConfig, error) {
+	runtimeCfg, err := Load()
+	if err != nil {
+		return nil, err
+	}
+	Set(runtimeCfg)
+	return runtimeCfg, nil
+}
+
+func Watch(onReload func(oldCfg, newCfg *RuntimeConfig)) (func() error, error) {
+	flags, err := parseFlags()
+	if err != nil {
+		return nil, err
+	}
+	_, _, confDDir, err := defaultPaths()
+	if err != nil {
+		return nil, err
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, err
+	}
+
+	if flags.ConfigFile != "" {
+		if err := watcher.Add(flags.ConfigFile); err != nil {
+			_ = watcher.Close()
+			return nil, err
 		}
-		DIS2GWDHIS2ServersConfigMap[config.Name] = config
-	})
-	v.WatchConfig()
+	}
+	if err := watcher.Add(confDDir); err != nil && !os.IsNotExist(err) {
+		_ = watcher.Close()
+		return nil, err
+	}
+
+	go func() {
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if !shouldReload(event) {
+					continue
+				}
+				oldCfg := Get()
+				newCfg, err := Reload()
+				if err != nil {
+					log.WithError(err).WithField("file", event.Name).Error("config reload failed")
+					continue
+				}
+				log.WithField("file", event.Name).Info("Config file changed")
+				if onReload != nil {
+					onReload(oldCfg, newCfg)
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.WithError(err).Error("config watch error")
+			}
+		}
+	}()
+
+	return watcher.Close, nil
 }
 
 type DHIS2CategoryOptionCombo struct {
@@ -288,6 +261,14 @@ type Config struct {
 			Until    time.Time     `mapstructure:"until" env:"PBSSYNC_UNTIL" env-description:"The date until which to fetch data from PBS" env-default:"2023-12-31T23:59:59Z"`
 			PageSize int           `mapstructure:"page_size" env:"PBSSYNC_PAGE_SIZE" env-description:"The number of items to fetch per page from PBS" env-default:"200"`
 		} `mapstructure:"sync"`
+		Cache struct {
+			Enabled      bool          `mapstructure:"enabled" env:"PBSSYNC_CACHE_ENABLED" env-description:"Whether to enable caching of PBS data" env-default:"true"`
+			UseCacheOnly bool          `mapstructure:"use_cache_only" env:"PBSSYNC_USE_CACHE_ONLY" env-description:"Whether to only use cached data and not fetch from PBS" env-default:"false"`
+			CacheDir     string        `mapstructure:"cache_dir" env:"PBSSYNC_CACHE_DIR" env-description:"The directory to store cached PBS data" env-default:"/var/cache/pbsync"`
+			TTL          time.Duration `mapstructure:"ttl" env:"PBSSYNC_CACHE_TTL" env-description:"The time-to-live for cached data, 0 = never expires" env-default:"0"`
+			Endpoint     string        `mapstructure:"endpoint" env:"PBSSYNC_CACHE_ENDPOINT" env-description:"The endpoint to used in cache key" env-default:""`
+			SchemaTag    string        `mapstructure:"schema_tag" env:"PBSSYNC_CACHE_SCHEMA_TAG" env-description:"The schema tag to used in cache key" env-default:""`
+		} `mapstructure:"cache"`
 	} `yaml:"pbs"`
 }
 
@@ -342,6 +323,244 @@ func getFilesInDirectory(directory string) ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func parseFlags() (CLIFlags, error) {
+	flagSetupOnce.Do(registerFlags)
+	flagParseOnce.Do(func() {
+		flag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+		flag.Parse()
+	})
+
+	return CLIFlags{
+		ConfigFile:             valueOrDefault(registeredConfigFile),
+		ForceSync:              valueOrDefault(ForceSync),
+		SkipSync:               valueOrDefault(SkipSync),
+		StartDate:              valueOrDefault(StartDate),
+		EndDate:                valueOrDefault(EndDate),
+		DisableHTTPServer:      valueOrDefault(DisableHTTPServer),
+		SkipRequestProcessing:  valueOrDefault(SkipRequestProcessing),
+		SkipScheduleProcessing: valueOrDefault(SkipScheduleProcessing),
+		SkipFetchingByDate:     valueOrDefault(SkipFectchingByDate),
+		ShowVersion:            valueOrDefault(ShowVersion),
+	}, nil
+}
+
+func registerFlags() {
+	configFilePath, _, _, err := defaultPaths()
+	if err != nil {
+		panic(err)
+	}
+
+	registeredConfigFile = flag.String("config-file", configFilePath,
+		"The path to the configuration file of the application")
+
+	startDate := time.Now().Add(-24 * time.Hour).Format("2006-01-02")
+	endDate := time.Now().Format("2006-01-02")
+	ForceSync = flag.Bool("force-sync", false, "Whether to forcefully sync organisation unit hierarchy")
+	SkipSync = flag.Bool("skip-sync", false, "Whether to skip measurements sync.")
+	StartDate = flag.String("start-date", startDate, "Date from which to start fetching data (YYYY-MM-DD)")
+	EndDate = flag.String("end-date", endDate, "Date until which to fetch data (YYYY-MM-DD)")
+	DisableHTTPServer = flag.Bool("disable-http-server", false, "Whether to disable HTTP Server")
+	SkipRequestProcessing = flag.Bool("skip-request-processing", false, "Whether to skip requests processing")
+	SkipScheduleProcessing = flag.Bool("skip-schedule-processing", false, "Whether to skip schedule processing")
+	SkipFectchingByDate = flag.Bool("skip-fetching-by-date", false, "Whether to skip fetching measurements by start and end date")
+	ShowVersion = flag.Bool("version", false, "Display version of DIS2GW Integrator")
+}
+
+func loadMainConfig(configFile string) (Config, error) {
+	configDir := ""
+	_, configDir, _, err := defaultPaths()
+	if err != nil {
+		return Config{}, err
+	}
+
+	v := viper.New()
+	v.SetConfigName("dhis2gw")
+	v.SetConfigType("yaml")
+	v.AddConfigPath(configDir)
+	v.AutomaticEnv()
+	if configFile != "" {
+		v.SetConfigFile(configFile)
+	}
+
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return Config{}, fmt.Errorf("fatal error %w", err)
+		}
+		return Config{}, fmt.Errorf("error reading config: %w", err)
+	}
+
+	cfg := Config{}
+	applyDefaults(&cfg)
+
+	if err := v.Unmarshal(&cfg, func(dc *mapstructure.DecoderConfig) {
+		dc.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(),
+			stringToTimeHookWithLocal(time.Local,
+				time.RFC3339, time.RFC3339Nano,
+				"2006-01-02 15:04:05", "2006-01-02",
+			),
+		)
+	}); err != nil {
+		return Config{}, fmt.Errorf("unable to decode into struct: %w", err)
+	}
+
+	return cfg, nil
+}
+
+func loadServerConfigs() (map[string]ServerConf, error) {
+	_, _, confDDir, err := defaultPaths()
+	if err != nil {
+		return nil, err
+	}
+
+	serverConfigs := make(map[string]ServerConf)
+	fileList, err := getFilesInDirectory(confDDir)
+	if err != nil {
+		return serverConfigs, err
+	}
+
+	for _, file := range fileList {
+		v := viper.New()
+		v.SetConfigFile(file)
+		v.SetConfigType("json")
+
+		if err := v.ReadInConfig(); err != nil {
+			log.WithError(err).WithField("File", file).Error("Error reading config file")
+			continue
+		}
+
+		var config ServerConf
+		if err := v.Unmarshal(&config); err != nil {
+			log.WithError(err).WithField("File", file).Error("Error unmarshaling config file")
+			continue
+		}
+		serverConfigs[config.Name] = config
+	}
+
+	return serverConfigs, nil
+}
+
+func defaultPaths() (configFilePath, configDir, confDDir string, err error) {
+	switch runtime.GOOS {
+	case "windows":
+		return "C:\\ProgramData\\dhis2gw\\dhis2gw.yml", "C:\\ProgramData\\dhis2gw", "C:\\ProgramData\\dhis2gw\\conf.d", nil
+	case "darwin", "linux":
+		return "/etc/dhis2gw/dhis2gw.yml", "/etc/dhis2gw/", "/etc/dhis2gw/conf.d", nil
+	default:
+		return "", "", "", fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+	}
+}
+
+func applyDefaults(cfg *Config) {
+	cfg.API.AggregateMappingScheme = "CODE"
+	cfg.PBS.Sync.Window = 15 * time.Minute
+	cfg.PBS.Sync.Interval = 1 * time.Minute
+	cfg.PBS.Sync.PageSize = 200
+	cfg.PBS.DefaultCategoryOptionCombo = "HllvX50cXC0"
+	cfg.PBS.CategoryOptionCombos = map[string]DHIS2CategoryOptionCombo{
+		"approved": {
+			Name:   "Budget approved",
+			UID:    "abgX6hsxvaT",
+			Option: "UHhWlfyy5bm",
+			Combo:  "R8svkeGLwE3",
+		},
+		"planned": {
+			Name:   "Budget planned",
+			UID:    "Hwbi4DDMjjd",
+			Option: "YE32G6hzVDl",
+			Combo:  "R8svkeGLwE3",
+		},
+		"release": {
+			Name:   "Release",
+			UID:    "FcZgA2sys1F",
+			Option: "lAyLQi6IqVF",
+			Combo:  "R8svkeGLwE3",
+		},
+		"expenditure": {
+			Name:   "Spent",
+			UID:    "C26fobnyPLc",
+			Option: "NfADZSy1VzB",
+			Combo:  "R8svkeGLwE3",
+		},
+		"cg_piap_indicator_projections_actual": {
+			Name:   "actual",
+			UID:    "HllvX50cXC0",
+			Option: "HKtncMjp06U",
+			Combo:  "NWhCUsy6l47",
+		},
+		"cg_reason_for_variance": {
+			Name:   "ReasonForVariance",
+			UID:    "",
+			Option: "",
+			Combo:  "",
+		},
+		"cg_piap_indicator_projections_target_y1": {
+			Name:   "target_y1",
+			UID:    "HllvX50cXC0",
+			Option: "Px8Lqkxy2si",
+			Combo:  "NWhCUsy6l47",
+		},
+	}
+	cfg.PBS.Sync.Since, _ = time.Parse(time.RFC3339, "2023-01-01T00:00:00Z")
+	cfg.PBS.Sync.Until, _ = time.Parse(time.RFC3339, "2023-12-31T23:59:59Z")
+	cfg.PBS.InstanceName = "train.ndpme"
+	cfg.Server.RedisDB = 5
+	cfg.Server.QueuePrefix = ""
+}
+
+func shouldReload(event fsnotify.Event) bool {
+	return event.Has(fsnotify.Write) ||
+		event.Has(fsnotify.Create) ||
+		event.Has(fsnotify.Remove) ||
+		event.Has(fsnotify.Rename)
+}
+
+func cloneServerConfigs(src map[string]ServerConf) map[string]ServerConf {
+	dst := make(map[string]ServerConf, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+func syncLegacyFlagPointers(flags CLIFlags) {
+	if ForceSync != nil {
+		*ForceSync = flags.ForceSync
+	}
+	if SkipSync != nil {
+		*SkipSync = flags.SkipSync
+	}
+	if StartDate != nil {
+		*StartDate = flags.StartDate
+	}
+	if EndDate != nil {
+		*EndDate = flags.EndDate
+	}
+	if DisableHTTPServer != nil {
+		*DisableHTTPServer = flags.DisableHTTPServer
+	}
+	if SkipRequestProcessing != nil {
+		*SkipRequestProcessing = flags.SkipRequestProcessing
+	}
+	if SkipScheduleProcessing != nil {
+		*SkipScheduleProcessing = flags.SkipScheduleProcessing
+	}
+	if SkipFectchingByDate != nil {
+		*SkipFectchingByDate = flags.SkipFetchingByDate
+	}
+	if ShowVersion != nil {
+		*ShowVersion = flags.ShowVersion
+	}
+}
+
+func valueOrDefault[T any](v *T) T {
+	var zero T
+	if v == nil {
+		return zero
+	}
+	return *v
 }
 
 func stringToTimeHookWithLocal(loc *time.Location, layouts ...string) mapstructure.DecodeHookFunc {

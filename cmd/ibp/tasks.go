@@ -123,8 +123,8 @@ func SyncProjects(client *resty.Client, baseURL string, dhis2Client *sdk.Client)
 						log.Infof("Tracker payload: %s", utils.ToPrettyJSON(payload))
 						cxt := context.Background()
 						// _, restyResponse, err4 := dhis2Client.SendLegacyTrackerPayload(cxt, &payload, nil)
-						qprams := map[string]string{"async": "false"}
-						_, restyResponse, err4 := dhis2Client.SendTrackerPayload(cxt, &payload, qprams)
+						qPrams := map[string]string{"async": "false"}
+						_, restyResponse, err4 := dhis2Client.SendTrackerPayload(cxt, &payload, qPrams)
 						if err4 != nil {
 							log.Infof("failed to send tracker payload: %v", err4)
 						}

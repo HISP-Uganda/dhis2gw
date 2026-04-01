@@ -6,10 +6,16 @@ import (
 	"dhis2gw/clients"
 	"dhis2gw/clients/pbs"
 	"dhis2gw/config"
+	"dhis2gw/db"
+	"dhis2gw/mappings"
 	"dhis2gw/models"
 	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/HISP-Uganda/go-dhis2-sdk/dhis2/schema"
@@ -22,26 +28,72 @@ var splash = `
 ╹  ┗━┛┗━┛         ╹ ╹╺┻┛╹    ╹   ┗━┛ ╹ ╹ ╹┗━╸
 `
 
+const dvBatchSize = 50
+
 func main() {
 	fmt.Print(splash)
+	runtimeCfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	config.Set(runtimeCfg)
+	cfg := runtimeCfg.Config
+	if _, err := db.Init(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	if err := clients.Init(); err != nil {
+		log.Fatalf("Failed to initialize DHIS2 client: %v", err)
+	}
+	if err := models.InitLocation(); err != nil {
+		log.Fatalf("Failed to initialize schedules location: %v", err)
+	}
+	if _, err := config.Watch(func(_, _ *config.RuntimeConfig) {
+		if _, err := db.Init(); err != nil {
+			log.WithError(err).Error("Failed to reload database")
+		}
+		if err := clients.Init(); err != nil {
+			log.WithError(err).Error("Failed to reload DHIS2 client")
+		}
+		if err := models.InitLocation(); err != nil {
+			log.WithError(err).Error("Failed to reload schedules location")
+		}
+	}); err != nil {
+		log.WithError(err).Warn("Failed to start config watcher")
+	}
 
-	baseURL := config.DHIS2GWConf.PBS.PBSURL
-	// vote := config.DHIS2GWConf.PBS.VoteCode
-	fy := config.DHIS2GWConf.PBS.FiscalYear
-	interval := config.DHIS2GWConf.PBS.Sync.Interval
-	once := config.DHIS2GWConf.PBS.Sync.Once
+	baseURL := cfg.PBS.PBSURL
+	fy := cfg.PBS.FiscalYear
+	interval := cfg.PBS.Sync.Interval
+	once := cfg.PBS.Sync.Once
+
+	cacheDir, err := resolveCacheDir(cfg.PBS.Cache.CacheDir, "pbs-sync")
+	if err != nil {
+		log.Fatalf("failed to resolve cache dir(%s): %v", cacheDir, err)
+	}
+	log.Infof("Cache directory: %s", cacheDir)
+
+	dbConn := db.GetDB()
+	ctx := context.Background()
+
+	mappingCache := mappings.NewMappingCache(dbConn, "pbs")
+
+	if err := mappingCache.Load(ctx); err != nil {
+		log.Fatalf("failed to load mapping cache: %v", err)
+	}
+
+	log.Printf("Loaded %d mappings", mappingCache.Size())
 
 	// ---- Build token source ----
 	var ts pbs.JWTTokenSource
-	if config.DHIS2GWConf.PBS.User != "" && config.DHIS2GWConf.PBS.Password != "" {
+	if cfg.PBS.User != "" && cfg.PBS.Password != "" {
 		ts = pbs.NewPBSTokenSource(
 			baseURL,
-			config.DHIS2GWConf.PBS.User,
-			config.DHIS2GWConf.PBS.Password,
-			config.DHIS2GWConf.PBS.IPAddress,
+			cfg.PBS.User,
+			cfg.PBS.Password,
+			cfg.PBS.IPAddress,
 		)
-	} else if config.DHIS2GWConf.PBS.JWT != "" {
-		ts = pbs.NewStaticJWTSource(config.DHIS2GWConf.PBS.JWT)
+	} else if cfg.PBS.JWT != "" {
+		ts = pbs.NewStaticJWTSource(cfg.PBS.JWT)
 	} else {
 		log.Fatal("pbs-sync: no authentication config provided")
 	}
@@ -49,17 +101,34 @@ func main() {
 	// ---- PBS client ----
 	client := pbs.NewClient(baseURL, ts)
 
-	// ---- Context ----
-	ctx := context.Background()
+	// ---- Graceful shutdown context ----
+	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	token, err := ts.Token(ctx)
+	// ---- Validate token early ----
+	tokenCtx, cancelToken := context.WithTimeout(rootCtx, 10*time.Minute)
+	defer cancelToken()
+
+	_, err = ts.Token(tokenCtx)
 	if err != nil {
-		log.Fatalf("pbs-sync: token error: %v", err)
+		if !cfg.PBS.Cache.UseCacheOnly {
+			log.Fatalf("pbs-sync: token error: %v", err)
+
+		}
+		// log.Fatalf("pbs-sync: token error: %v", err)
 	}
-	log.Infof("pbs-sync: token: %v", token)
+	// log.Infof("pbs-sync: token: %v", token)
 
 	if once {
-		if err := fetchOutturns(ctx, client, fy); err != nil {
+		log.Info("pbs-sync: running once")
+		//if err := fetchOutturns(ctx, client, fy); err != nil {
+		//	log.Fatalf("pbs-sync: fetch error: %v", err)
+		//}
+		// Give long-running GraphQL enough time (adjust as needed)
+		runCtx, cancelRun := context.WithTimeout(rootCtx, 10*time.Minute)
+		defer cancelRun()
+
+		if err := fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy); err != nil {
 			log.Fatalf("pbs-sync: fetch error: %v", err)
 		}
 		log.Println("pbs-sync: single run completed (Sync.Once=true)")
@@ -71,12 +140,18 @@ func main() {
 	defer ticker.Stop()
 
 	for {
-		if err := fetchOutturns(ctx, client, fy); err != nil {
+		//if err := fetchOutturns(ctx, client, fy); err != nil {
+		//	log.Printf("pbs-sync: fetch error: %v", err)
+		//}
+		runCtx, cancelRun := context.WithTimeout(rootCtx, 10*time.Minute)
+		if err := fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy); err != nil {
 			log.Printf("pbs-sync: fetch error: %v", err)
 		}
 
+		cancelRun()
+
 		select {
-		case <-ctx.Done():
+		case <-rootCtx.Done():
 			log.Println("pbs-sync: shutting down")
 			return
 		case <-ticker.C:
@@ -84,7 +159,27 @@ func main() {
 	}
 }
 
-func fetchOutturns(ctx context.Context, client *pbs.Client, fy string) error {
+func resolveCacheDir(dir string, appName string) (string, error) {
+	base, err := os.UserCacheDir()
+	if err != nil {
+		return "", err
+	}
+
+	// Default: ~/.cache/<appName>
+	if dir == "" {
+		return filepath.Join(base, appName), nil
+	}
+
+	// Absolute path provided
+	if filepath.IsAbs(dir) {
+		return dir, nil
+	}
+
+	// Relative path -> place under user cache dir
+	return filepath.Join(base, dir), nil
+}
+
+func fetchOutturns(ctx context.Context, cfg config.Config, client *pbs.Client, fy string) error {
 	log.Infof("pbs-sync: fetching outturns")
 	resp, err := pbs.CgBudgetOutturnsByFiscalYear(ctx, client.Gql(), fy)
 	if err != nil {
@@ -94,7 +189,7 @@ func fetchOutturns(ctx context.Context, client *pbs.Client, fy string) error {
 	for _, row := range resp.CgBudgetOutturnByFiscalYear {
 		log.Infof("VoteCode=%s Vote=%s FY=%s Prog=%s Approved=%.2f Q1Exp=%.2f",
 			row.Vote_Code, row.Vote_Name, row.Fiscal_Year, row.Programme_Name, row.ApprovedBudget, row.Q1Expenditure)
-		dvs, dvsError := BuildPBSDataValues2(row, &config.DHIS2GWConf)
+		dvs, dvsError := BuildPBSDataValues2(row, &cfg)
 		if dvsError != nil {
 			// log.Warnf("pbs-sync: WARN 001: build data values error: %v", dvsError)
 			continue
@@ -115,7 +210,7 @@ func fetchOutturns(ctx context.Context, client *pbs.Client, fy string) error {
 			}).Info("pbs-sync: data value")
 		}
 		// Push to DHIS2 in batches of 200
-		batchSize := 200
+		batchSize := 5
 		for i := 0; i < len(dvs); i += batchSize {
 			end := i + batchSize
 			if end > len(dvs) {
@@ -130,10 +225,75 @@ func fetchOutturns(ctx context.Context, client *pbs.Client, fy string) error {
 			log.Infof("pbs-sync: pushed %d data values to DHIS2", len(batch))
 		}
 
-		//if err := models.PushDataValues(ctx, dvs); err != nil {
-		//	log.Errorf("pbs-sync: push data values error: %v", err)
-		//	continue
-		//}
+	}
+	return nil
+}
+
+func ForEachBatch[T any](slice []T, batchSize int, callback func(batch []T) error) error {
+	for i := 0; i < len(slice); i += batchSize {
+		end := i + batchSize
+		if end > len(slice) {
+			end = len(slice)
+		}
+		batch := slice[i:end]
+		err := callback(batch)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func fetchPiapIndicatorProjectionsByFiscalYear(
+	ctx context.Context, cfg config.Config, mappingsCache *mappings.MappingCache, client *pbs.Client, fy string) error {
+	log.Infof("pbs-sync: fetching piap indicator projections for year %s", fy)
+	//resp, err := pbs.CgPiapIndicatorProjectionsByFiscalYear(ctx, client.Gql(), fy)
+	//if err != nil {
+	//	log.Errorf("pbs-sync: CgPiapIndicatorProjectionsByFiscalYear fetch error: %v", err)
+	//	return err
+	//}
+	resp, err := GetIndicatorProjections(ctx, cfg, client, fy) // XXX change this true
+	if err != nil {
+		log.Errorf("pbs-sync: failed to get indicator projections: %v", err)
+	}
+	if resp == nil {
+		return fmt.Errorf("GetIndicatorPorjections yields a nil response (fy=%s)", fy)
+	}
+	log.Infof("pbs-sync: fetched %d piap indicator projections.", len(resp))
+
+	for _, row := range resp {
+		// log.WithFields(log.Fields{"PiapIndicatortProjection": row}).Info("pbs-sync: piap indicator projection")
+		dvs, err2 := BuildPiapIndicatorProjectsDataValues(row, &cfg, mappingsCache)
+		if err2 != nil {
+			log.Warnf("pbs-sync: failed to build data values for piap indicator projection: %v", err2)
+			continue
+		}
+		if len(dvs) == 0 {
+			log.Warnf("pbs-sync: no data values generated for piap indicator projection: %v", row)
+			continue
+		}
+		log.Infof("pbs-sync: %d data values generated for piap indicator projection: %v", len(dvs), dvs)
+		for _, dv := range dvs {
+			log.WithFields(log.Fields{
+				"dataElement":         *dv.DataElement,
+				"period":              *dv.Period,
+				"orgUnit":             *dv.OrgUnit,
+				"categoryOptionCombo": *dv.CategoryOptionCombo,
+				"categoryCombo":       *dv.CategoryCombo,
+				"categoryOption":      *dv.CategoryOption,
+				// "value":               *dv.Value,
+			}).Info("pbs-sync: data value")
+		}
+
+		_ = ForEachBatch(dvs, dvBatchSize, func(batch []ExtendedDataValue) error {
+			if err := PushIndividualDataValues(batch); err != nil {
+				log.Errorf("pbs-sync: push data values error: %v", err)
+				return nil // swallow error to "continue" like before
+			}
+			log.Infof("pbs-sync: pushed %d data values to DHIS2", len(batch))
+			return nil
+		})
+
 	}
 	return nil
 }
@@ -285,6 +445,77 @@ func BuildPBSDataValues2(
 	return dvs, nil
 }
 
+type ProjectionsDTO = pbs.CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYearOpmCgPiapIndicatorProjectionsDto
+
+func BuildPiapIndicatorProjectsDataValues(
+	row ProjectionsDTO,
+	cfg *config.Config,
+	mappingsCache *mappings.MappingCache,
+) ([]ExtendedDataValue, error) {
+	var dvs []ExtendedDataValue
+	ouMapping, err := models.GetOrgUnitMapping(row.Vote_Code, cfg.PBS.InstanceName)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"no org unit mapping for Vote Code: %s, Vote Name: %s for source_name: %s",
+			row.Vote_Code, row.Vote_Name, cfg.PBS.InstanceName)
+	}
+
+	deMapping, ok := mappingsCache.Get(row.PIAP_Output_Indicator_Code)
+	if !ok {
+		log.Warnf("missing mapping for code %s", row.PIAP_Output_Indicator_Code)
+		return nil, fmt.Errorf("missing mapping for code %s", row.PIAP_Output_Indicator_Code)
+	}
+
+	// Helper to get combo UID with default fallback
+	getComboUID := func(baseKey string) config.DHIS2CategoryOptionCombo {
+		conf := config.DHIS2CategoryOptionCombo{}
+		if combo, ok := cfg.PBS.CategoryOptionCombos[baseKey]; ok && combo.UID != "" {
+
+			return combo
+		}
+		return conf
+	}
+
+	// Table-driven for quarters
+	type qrow[T float64 | string] struct {
+		qName              string
+		actual             T
+		reasonForVariation string
+	}
+	quarters := []qrow[string]{
+		{qName: "Q1", actual: row.Q1_Actual_Target, reasonForVariation: row.Q1_Reason_For_Variation},
+		{qName: "Q2", actual: row.Q2_Cum_Performance, reasonForVariation: row.Q2_Reason_For_Variation},
+		{qName: "Q3", actual: row.Q3_Cum_Performance, reasonForVariation: row.Q3_Reason_For_Variation},
+		{qName: "Q4", actual: row.Q4_Cum_Performance, reasonForVariation: row.Q4_Reason_For_Variation},
+	}
+
+	for _, q := range quarters {
+		period := deriveQuarterPeriod(row.Fiscal_Year, q.qName)
+		appendDV(
+			"cg_piap_indicator_projections_actual", period, q.actual, q.reasonForVariation, &dvs, deMapping, ouMapping, getComboUID)
+		//if q.reasonForVariation != "" {
+		//	// we add the reason for variation
+		//}
+		log.WithFields(log.Fields{"PBS_QUATER": q.qName, "PERIOD": period, "Year": row.Fiscal_Year}).Info("Period Information")
+	}
+
+	// Approved Budget (annual, July period of first FY year)
+	if row.Target_Y1 != "" {
+		// targetY1, err := strconv.ParseFloat(row.Target_Y1, 64)
+		//if err != nil {
+		//	return nil, err
+		//}
+		//if targetY1 != 0 {
+		year := strings.Split(row.Fiscal_Year, "-")[0]
+		period := strings.TrimSpace(fmt.Sprintf("%sJuly", year))
+		appendDV("cg_piap_indicator_projections_target_y1", period, row.Target_Y1, "", &dvs, deMapping, ouMapping, getComboUID)
+		//}
+	}
+	log.WithFields(log.Fields{"DATAVALUES": dvs}).Debug("The data values to push")
+
+	return dvs, nil
+}
+
 // deriveQuarterPeriod converts a fiscal year like "2025-2026" and "Q1"
 // into the correct DHIS2 period, assuming fiscal year starts in July.
 //
@@ -338,4 +569,63 @@ func deriveQuarterPeriod(fiscalYear string, quarter string) string {
 	}
 
 	return fmt.Sprintf("%s%s", year, dhisQuarter)
+}
+
+func appendDV[T float64 | string](
+	baseKey string,
+	period string,
+	v T,
+	comment string,
+	dvs *[]ExtendedDataValue,
+	deMapping *models.Dhis2Mapping,
+	ouMapping string,
+	getComboUID func(string) config.DHIS2CategoryOptionCombo,
+) {
+	var val string
+
+	switch x := any(v).(type) {
+	case float64:
+		if x == 0 {
+			return
+		}
+		val = fmt.Sprintf("%.0f", x)
+
+	case string:
+		if x == "" {
+			return
+		}
+		val = x
+	}
+
+	coc := getComboUID(baseKey)
+	dv := ExtendedDataValue{
+		DataValue: schema.DataValue{
+			DataElement:          &deMapping.DataElement,
+			AttributeOptionCombo: &coc.UID,
+			CategoryOptionCombo:  &coc.UID,
+			Period:               &period,
+			OrgUnit:              &ouMapping,
+			Value:                &val,
+		},
+		CategoryCombo:  &coc.Combo,
+		CategoryOption: &coc.Option,
+	}
+
+	if comment != "" {
+		commentDv := ExtendedDataValue{
+			DataValue: schema.DataValue{
+				DataElement:          &deMapping.DataElement,
+				AttributeOptionCombo: &coc.UID,
+				CategoryOptionCombo:  &coc.UID,
+				Period:               &period,
+				OrgUnit:              &ouMapping,
+				Comment:              &comment,
+			},
+			CategoryCombo:  &coc.Combo,
+			CategoryOption: &coc.Option,
+		}
+		*dvs = append(*dvs, commentDv)
+		// dv.Comment = &comment
+	}
+	*dvs = append(*dvs, dv)
 }

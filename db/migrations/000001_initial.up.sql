@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE EXTENSION IF NOT EXISTS plpython3u;
+--CREATE EXTENSION IF NOT EXISTS plpython3u;
 CREATE EXTENSION postgis;
 CREATE EXTENSION xml2;
 
@@ -420,14 +420,14 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-CREATE OR REPLACE FUNCTION pp_json(j TEXT, sort_keys BOOLEAN = TRUE, indent TEXT = '    ')
-    RETURNS TEXT AS
-$delim$
-  import simplejson as json
-  if not j:
-      return ''
-  return json.dumps(json.loads(j), sort_keys=sort_keys, indent=indent)
-$delim$ LANGUAGE plpython3u;
+--CREATE OR REPLACE FUNCTION pp_json(j TEXT, sort_keys BOOLEAN = TRUE, indent TEXT = '    ')
+--    RETURNS TEXT AS
+--$delim$
+--  import simplejson as json
+--  if not j:
+--      return ''
+--  return json.dumps(json.loads(j), sort_keys=sort_keys, indent=indent)
+--$delim$ LANGUAGE plpython3u;
 
 CREATE OR REPLACE FUNCTION body_pprint(body text)
     RETURNS TEXT AS
@@ -436,7 +436,7 @@ BEGIN
     IF xml_is_well_formed_document(body) THEN
         return xml_pretty(body)::text;
     ELSIF is_valid_json(body) THEN
-        return pp_json(body, 't', '    ');
+        return jsonb_pretty(body::JSONB);
     ELSE
         return body;
     END IF;

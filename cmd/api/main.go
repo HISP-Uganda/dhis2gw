@@ -1,27 +1,18 @@
 package main
 
 import (
+	"dhis2gw/bootstrap"
 	"dhis2gw/config"
 	"dhis2gw/controllers"
 	"dhis2gw/db"
 	"dhis2gw/middleware"
+	"dhis2gw/models"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
 	log "github.com/sirupsen/logrus"
 	"html/template"
-	"os"
-	"time"
 )
-
-func init() {
-	formatter := new(log.TextFormatter)
-	formatter.TimestampFormat = time.RFC3339
-	formatter.FullTimestamp = true
-
-	log.SetFormatter(formatter)
-	log.SetOutput(os.Stdout)
-}
 
 var splash = `
 ╺┳┓╻ ╻╻┏━┓┏━┓   ┏━╸┏━┓╺┳╸┏━╸╻ ╻┏━┓╻ ╻   ┏━┓┏━╸┏━┓╻ ╻┏━╸┏━┓   ┏━┓┏━┓╻
@@ -31,8 +22,38 @@ var splash = `
 var client *asynq.Client
 
 func main() {
-	fmt.Printf(splash)
-	client = asynq.NewClient(asynq.RedisClientOpt{Addr: config.DHIS2GWConf.Server.RedisAddress})
+	bootstrap.InitLogging()
+	fmt.Print(splash)
+	runtimeCfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	config.Set(runtimeCfg)
+	cfg := runtimeCfg.Config
+	if _, err := db.Init(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	if err := models.InitLocation(); err != nil {
+		log.Fatalf("Failed to initialize schedules location: %v", err)
+	}
+	if err := models.InitServers(); err != nil {
+		log.Fatalf("Failed to initialize server cache: %v", err)
+	}
+	if _, err := config.Watch(func(_, _ *config.RuntimeConfig) {
+		if _, err := db.Init(); err != nil {
+			log.WithError(err).Error("Failed to reload database")
+		}
+		if err := models.InitLocation(); err != nil {
+			log.WithError(err).Error("Failed to reload schedules location")
+		}
+		if err := models.InitServers(); err != nil {
+			log.WithError(err).Error("Failed to reload server cache")
+		}
+	}); err != nil {
+		log.WithError(err).Warn("Failed to start config watcher")
+	}
+
+	client = asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.Server.RedisAddress})
 	defer func(client *asynq.Client) {
 		_ = client.Close()
 	}(client)
@@ -47,11 +68,11 @@ func main() {
 	}
 	// Load templates with custom functions
 	tmpl := template.Must(template.New("").Funcs(funcMap).ParseGlob(
-		config.DHIS2GWConf.Server.TemplatesDirectory + "/*"))
+		cfg.Server.TemplatesDirectory + "/*"))
 	router.SetHTMLTemplate(tmpl)
 
 	// Serve static files
-	router.Static("/static", config.DHIS2GWConf.Server.StaticDirectory)
+	router.Static("/static", cfg.Server.StaticDirectory)
 
 	v2 := router.Group("/api", middleware.BasicAuth(db.GetDB(), client))
 	{
@@ -74,7 +95,7 @@ func main() {
 		c.String(404, "Page Not Found!")
 	})
 
-	port := config.DHIS2GWConf.Server.Port
+	port := cfg.Server.Port
 	if err := router.Run(":" + fmt.Sprintf("%s", port)); err != nil {
 		log.Fatalf("Could not start GIN server: %v", err)
 	}

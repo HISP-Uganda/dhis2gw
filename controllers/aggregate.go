@@ -37,6 +37,7 @@ type AggregateController struct{}
 // @Failure 500 {object} models.ErrorResponse "Server-side error"
 // @Router /aggregate [post]
 func (a *AggregateController) CreateRequest(c *gin.Context) {
+	cfg := config.MustGet().Config
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON: " + err.Error()})
@@ -86,7 +87,7 @@ func (a *AggregateController) CreateRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
 	}
-	queue := config.DHIS2GWConf.Server.QueuePrefix + ":default"
+	queue := cfg.Server.QueuePrefix + ":default"
 	taskInfo, err := asynqClient.Enqueue(task, asynq.Queue(queue))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to enqueue job"})
@@ -117,11 +118,12 @@ func (a *AggregateController) CreateRequest(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse "Server-side error"
 // @Router /aggregate/reenqueue/{task_id} [post]
 func (a *AggregateController) ReEnqueueAggregateTask(c *gin.Context) {
+	cfg := config.MustGet().Config
 	taskID := c.Param("task_id")
-	queue := config.DHIS2GWConf.Server.QueuePrefix + ":default"
+	queue := cfg.Server.QueuePrefix + ":default"
 	// queue := c.DefaultQuery("queue", "default")
 	asyncClient := c.MustGet("asynqClient").(*asynq.Client)
-	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: config.DHIS2GWConf.Server.RedisAddress})
+	inspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: cfg.Server.RedisAddress})
 
 	// Get the task from the dead/retry queue
 	info, err := inspector.GetTaskInfo(queue, taskID)
@@ -173,6 +175,7 @@ type BatchReEnqueueRequest struct {
 // @Failure 500 {object} models.ErrorResponse "Server-side error"
 // @Router /aggregate/reenqueue/batch [post]
 func (a *AggregateController) BatchReEnqueueAggregateTasksByIDs(c *gin.Context) {
+	cfg := config.MustGet().Config
 	var req BatchReEnqueueRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -185,7 +188,7 @@ func (a *AggregateController) BatchReEnqueueAggregateTasksByIDs(c *gin.Context) 
 
 	asyncClient := c.MustGet("asynqClient").(*asynq.Client)
 	inspector := asynq.NewInspector(asynq.RedisClientOpt{
-		Addr: config.DHIS2GWConf.Server.RedisAddress, DB: config.DHIS2GWConf.Server.RedisDB})
+		Addr: cfg.Server.RedisAddress, DB: cfg.Server.RedisDB})
 
 	reEnqueued := 0
 	failed := 0
@@ -199,7 +202,7 @@ func (a *AggregateController) BatchReEnqueueAggregateTasksByIDs(c *gin.Context) 
 			continue
 		}
 
-		queue := config.DHIS2GWConf.Server.QueuePrefix + ":default"
+		queue := cfg.Server.QueuePrefix + ":default"
 		task := asynq.NewTask(info.Type, info.Payload)
 		taskInfo, err := asyncClient.Enqueue(task, asynq.MaxRetry(3), asynq.Queue(queue))
 		if err != nil {

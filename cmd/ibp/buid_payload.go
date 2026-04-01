@@ -31,6 +31,7 @@ func ExtractValue(jsonStr, path string) string {
 	if result.IsArray() {
 		// If it’s an array, join all elements with a comma
 		arr := result.Array()
+
 		values := make([]string, 0, len(arr))
 		for _, v := range arr {
 			values = append(values, v.String())
@@ -47,7 +48,7 @@ func ExtractValues(jsonStr string, mapping map[string]string, conf *Config) map[
 	for uid, path := range mapping {
 		v := gjson.Get(jsonStr, path)
 		if !v.Exists() {
-			log.Warnf("Path %s not found in JSON", path)
+			log.Warnf("Path %s not found in JSON: %s", path, jsonStr)
 			if _, ok := conf.Defaults[uid]; ok {
 				switch conf.Defaults[uid].(type) {
 				case string:
@@ -61,6 +62,16 @@ func ExtractValues(jsonStr string, mapping map[string]string, conf *Config) map[
 
 		if v.IsArray() {
 			arr := v.Array()
+
+			if strings.Contains(path, "#") {
+				var items []string
+				for _, item := range arr {
+					items = append(items, item.String())
+				}
+				results[uid] = strings.Join(items, ", ")
+				continue
+			}
+
 			if len(arr) == 0 {
 				log.Warnf("Path %s is an empty array", path)
 				continue
@@ -74,109 +85,109 @@ func ExtractValues(jsonStr string, mapping map[string]string, conf *Config) map[
 	return results
 }
 
-func BuildTrackerPayload(
-	jsonStr string,
-	cfg *Config,
-	orgUnit string,
-) (tracker.LegacyNestedPayload, error) {
-	// now := time.Now().Format("2006-01-02")
-	now := tracker.DHIS2Time{
-		Time: time.Now(),
-	}
-	// teUID := utils.GenerateUID()
-	// enrollmentUID := utils.GenerateUID()
-
-	// --- Extract attributes ---
-	validAttributes := utils.FilterValidUIDs(cfg.Program.TrackedEntityAttributes)
-	// log.Infof("YYYY Valid Attributes Slice: %v", validAttributes)
-	validAttributesSlice := utils.FilterValidUIDsSlice(validAttributes)
-	// log.Infof("XXXXXX Valid Attributes Slice: %v", validAttributesSlice)
-	missingMandatoryAttrs := utils.SetDifference(validAttributesSlice, cfg.MandatoryTrackedEntityAttributes)
-	// log.Infof("Missing mandatory attributes: %v", missingMandatoryAttrs)
-	var (
-		missingWithDefaults    []string
-		missingWithoutDefaults []string
-	)
-	if len(missingMandatoryAttrs) > 0 {
-
-		for _, attr := range missingMandatoryAttrs {
-			if _, hasDefault := cfg.Defaults[attr]; hasDefault {
-				missingWithDefaults = append(missingWithDefaults, attr)
-			} else {
-				missingWithoutDefaults = append(missingWithoutDefaults, attr)
-			}
-		}
-		log.Warnf(
-			"Missing mandatory attributes without defaults: %v; with defaults (will be auto-filled): %v",
-			missingWithoutDefaults,
-			missingWithDefaults,
-		)
-		// Only block if there are mandatory attributes with no defaults
-		if len(missingWithoutDefaults) > 0 {
-			return tracker.LegacyNestedPayload{}, errors.New("missing mandatory attributes without defaults")
-		}
-	}
-	attrs := ExtractValues(jsonStr, validAttributes, cfg)
-	log.Debugf("Valid attributes ====>: %v", attrs)
-	var attrList []tracker.TrackedEntityAttribute
-	for uid, val := range attrs {
-		attrVal := NormalizeValue(uid, val)
-		attrList = append(attrList, tracker.TrackedEntityAttribute{Attribute: &uid, Value: &attrVal})
-	}
-	for _, k := range missingWithDefaults {
-		v := cfg.Defaults[k].(string)
-		attrList = append(attrList, tracker.TrackedEntityAttribute{Attribute: &k, Value: &v})
-	}
-
-	// --- Build Events from stages ---
-	var events []tracker.LegacyNestedEvent
-	for _, stageCfg := range cfg.Program.Stages {
-		validDataValues := utils.FilterValidUIDs(stageCfg.DataValues)
-		validDataValuesSlice := utils.FilterValidUIDsSlice(validDataValues)
-		missingMandatoryDataValues := utils.MissingStrings(validDataValuesSlice, cfg.MandatoryTrackedEntityAttributes)
-		if len(missingMandatoryDataValues) > 0 {
-			log.Warnf("Missing mandatory attributes: %v", missingMandatoryDataValues)
-		}
-		dataVals := ExtractValues(jsonStr, validDataValues, cfg)
-		var dataValueList []schema.DataValue
-		for deUID, val := range dataVals {
-			dataValueList = append(dataValueList, schema.DataValue{DataElement: &deUID, Value: &val})
-		}
-
-		if len(dataValueList) > 0 {
-			events = append(events, tracker.LegacyNestedEvent{
-				Program:      cfg.Program.ProgramID,
-				ProgramStage: stageCfg.ProgramStage,
-				OrgUnit:      orgUnit,
-				OccurredAt:   now,
-				DataValues:   dataValueList,
-				Status:       "ACTIVE",
-				// TrackedEntityInstance: teUID,
-			})
-		}
-
-	}
-
-	tei := tracker.LegacyNestedTrackedEntity{
-		TrackedEntityType: cfg.Program.TrackedEntityType,
-		// TrackedEntityInstance: teUID,
-		OrgUnit:    orgUnit,
-		Attributes: attrList,
-		Enrollments: []tracker.LegacyNestedEnrollment{
-			{
-				Program:    cfg.Program.ProgramID,
-				OrgUnit:    orgUnit,
-				EnrolledAt: now,
-				OccurredAt: now,
-				Events:     events,
-				Status:     "ACTIVE",
-				// TrackedEntityInstance: teUID,
-			},
-		},
-	}
-
-	return tracker.LegacyNestedPayload{TrackedEntities: []tracker.LegacyNestedTrackedEntity{tei}}, nil
-}
+//func BuildTrackerPayload(
+//	jsonStr string,
+//	cfg *Config,
+//	orgUnit string,
+//) (tracker.LegacyNestedPayload, error) {
+//	// now := time.Now().Format("2006-01-02")
+//	now := tracker.DHIS2Time{
+//		Time: time.Now(),
+//	}
+//	// teUID := utils.GenerateUID()
+//	// enrollmentUID := utils.GenerateUID()
+//
+//	// --- Extract attributes ---
+//	validAttributes := utils.FilterValidUIDs(cfg.Program.TrackedEntityAttributes)
+//	// log.Infof("YYYY Valid Attributes Slice: %v", validAttributes)
+//	validAttributesSlice := utils.FilterValidUIDsSlice(validAttributes)
+//	// log.Infof("XXXXXX Valid Attributes Slice: %v", validAttributesSlice)
+//	missingMandatoryAttrs := utils.SetDifference(validAttributesSlice, cfg.MandatoryTrackedEntityAttributes)
+//	// log.Infof("Missing mandatory attributes: %v", missingMandatoryAttrs)
+//	var (
+//		missingWithDefaults    []string
+//		missingWithoutDefaults []string
+//	)
+//	if len(missingMandatoryAttrs) > 0 {
+//
+//		for _, attr := range missingMandatoryAttrs {
+//			if _, hasDefault := cfg.Defaults[attr]; hasDefault {
+//				missingWithDefaults = append(missingWithDefaults, attr)
+//			} else {
+//				missingWithoutDefaults = append(missingWithoutDefaults, attr)
+//			}
+//		}
+//		log.Warnf(
+//			"Missing mandatory attributes without defaults: %v; with defaults (will be auto-filled): %v",
+//			missingWithoutDefaults,
+//			missingWithDefaults,
+//		)
+//		// Only block if there are mandatory attributes with no defaults
+//		if len(missingWithoutDefaults) > 0 {
+//			return tracker.LegacyNestedPayload{}, errors.New("missing mandatory attributes without defaults")
+//		}
+//	}
+//	attrs := ExtractValues(jsonStr, validAttributes, cfg)
+//	log.Debugf("Valid attributes ====>: %v", attrs)
+//	var attrList []tracker.TrackedEntityAttribute
+//	for uid, val := range attrs {
+//		attrVal := NormalizeValue(uid, val)
+//		attrList = append(attrList, tracker.TrackedEntityAttribute{Attribute: &uid, Value: &attrVal})
+//	}
+//	for _, k := range missingWithDefaults {
+//		v := cfg.Defaults[k].(string)
+//		attrList = append(attrList, tracker.TrackedEntityAttribute{Attribute: &k, Value: &v})
+//	}
+//
+//	// --- Build Events from stages ---
+//	var events []tracker.LegacyNestedEvent
+//	for _, stageCfg := range cfg.Program.Stages {
+//		validDataValues := utils.FilterValidUIDs(stageCfg.DataValues)
+//		validDataValuesSlice := utils.FilterValidUIDsSlice(validDataValues)
+//		missingMandatoryDataValues := utils.MissingStrings(validDataValuesSlice, cfg.MandatoryTrackedEntityAttributes)
+//		if len(missingMandatoryDataValues) > 0 {
+//			log.Warnf("Missing mandatory attributes: %v", missingMandatoryDataValues)
+//		}
+//		dataVals := ExtractValues(jsonStr, validDataValues, cfg)
+//		var dataValueList []schema.DataValue
+//		for deUID, val := range dataVals {
+//			dataValueList = append(dataValueList, schema.DataValue{DataElement: &deUID, Value: &val})
+//		}
+//
+//		if len(dataValueList) > 0 {
+//			events = append(events, tracker.LegacyNestedEvent{
+//				Program:      cfg.Program.ProgramID,
+//				ProgramStage: stageCfg.ProgramStage,
+//				OrgUnit:      orgUnit,
+//				OccurredAt:   now,
+//				DataValues:   dataValueList,
+//				Status:       "ACTIVE",
+//				// TrackedEntityInstance: teUID,
+//			})
+//		}
+//
+//	}
+//
+//	tei := tracker.LegacyNestedTrackedEntity{
+//		TrackedEntityType: cfg.Program.TrackedEntityType,
+//		// TrackedEntityInstance: teUID,
+//		OrgUnit:    orgUnit,
+//		Attributes: attrList,
+//		Enrollments: []tracker.LegacyNestedEnrollment{
+//			{
+//				Program:    cfg.Program.ProgramID,
+//				OrgUnit:    orgUnit,
+//				EnrolledAt: now,
+//				OccurredAt: now,
+//				Events:     events,
+//				Status:     "ACTIVE",
+//				// TrackedEntityInstance: teUID,
+//			},
+//		},
+//	}
+//
+//	return tracker.LegacyNestedPayload{TrackedEntities: []tracker.LegacyNestedTrackedEntity{tei}}, nil
+//}
 
 func BuildTrackerPayloadV2(
 	jsonStr string,

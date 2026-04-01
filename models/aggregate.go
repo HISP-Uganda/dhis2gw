@@ -39,7 +39,7 @@ func (r *AggregateRequest) ToDHIS2AggregatePayload() aggregate.DataValueSetPaylo
 
 func ConvertDataValuesToDHIS2DataValues(requestDataValues map[string]any, source, instance string) []schema.DataValue {
 	dv := []schema.DataValue{}
-	codedMapping, err := GetDhis2MappingsByCode(config.DHIS2GWConf.API.AggregateMappingScheme, source, instance)
+	codedMapping, err := GetDhis2MappingsByCode(config.MustGet().Config.API.AggregateMappingScheme, source, instance)
 	if err != nil {
 		log.Debugf("Error getting code dimensions: %v", err)
 		return dv
@@ -62,7 +62,7 @@ func ConvertDataValuesToDHIS2DataValues(requestDataValues map[string]any, source
 			dataValue := schema.DataValue{
 				DataElement:         &value.DataElement,
 				Value:               &strVal,
-				CategoryOptionCombo: &value.CategoryOptionCombo,
+				CategoryOptionCombo: value.CategoryOptionCombo,
 			}
 			dv = append(dv, dataValue)
 		} else {

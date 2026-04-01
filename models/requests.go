@@ -155,7 +155,7 @@ func NewRequest(c *gin.Context, db *sqlx.DB) (Request, error) {
 	r.ObjectType = c.Query("objectType")
 	r.Errors = c.Query("extras")
 	r.District = c.Query("district")
-	ccList := c.DefaultQuery("cc", config.DHIS2GWConf.API.CCDHIS2Servers)
+	ccList := c.DefaultQuery("cc", config.MustGet().Config.API.CCDHIS2Servers)
 	serverIDs := lo.Map(strings.Split(ccList, ","), func(name string, _ int) int64 { // lodash stuff
 		return GetServerIDByName(name)
 	})
@@ -358,9 +358,9 @@ func (rq *RequestForm) Save(db *sqlx.DB) (Request, error) {
 	r.DependsOn = rq.DependsOn
 	// r.Source = int(GetServerIDByName(rq.Source))
 	// r.Destination = int(GetServerIDByName(rq.Destination))
-	source := ServerMapByName[rq.Source]
+	source, _ := getServerFromCacheByName(rq.Source)
 	r.Source = int(source.ID())
-	destination := ServerMapByName[rq.Destination]
+	destination, _ := getServerFromCacheByName(rq.Destination)
 	r.Destination = int(destination.ID())
 	if r.Source == 0 {
 		return *req, errors.New(fmt.Sprintf("Source server %s not found!", rq.Source))

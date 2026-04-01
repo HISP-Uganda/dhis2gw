@@ -166,6 +166,7 @@ type CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYea
 	Department_Name            string `json:"Department_Name"`
 	Budget_Output_Code         string `json:"Budget_Output_Code"`
 	Budget_Output_Description  string `json:"Budget_Output_Description"`
+	Target_Y1                  string `json:"Target_Y1"`
 	PIAP_Output_Code           string `json:"PIAP_Output_Code"`
 	PIAP_Output_Description    string `json:"PIAP_Output_Description"`
 	PIAP_Output_Indicator_Code string `json:"PIAP_Output_Indicator_Code"`
@@ -226,6 +227,11 @@ func (v *CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFisca
 // GetBudget_Output_Description returns CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYearOpmCgPiapIndicatorProjectionsDto.Budget_Output_Description, and is useful for accessing the field via an interface.
 func (v *CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYearOpmCgPiapIndicatorProjectionsDto) GetBudget_Output_Description() string {
 	return v.Budget_Output_Description
+}
+
+// GetTarget_Y1 returns CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYearOpmCgPiapIndicatorProjectionsDto.Target_Y1, and is useful for accessing the field via an interface.
+func (v *CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYearOpmCgPiapIndicatorProjectionsDto) GetTarget_Y1() string {
+	return v.Target_Y1
 }
 
 // GetPIAP_Output_Code returns CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYearOpmCgPiapIndicatorProjectionsDto.PIAP_Output_Code, and is useful for accessing the field via an interface.
@@ -979,6 +985,7 @@ query CgPiapIndicatorProjectionsByFiscalYear ($fy: String!) {
 		Department_Name
 		Budget_Output_Code
 		Budget_Output_Description
+		Target_Y1
 		PIAP_Output_Code
 		PIAP_Output_Description
 		PIAP_Output_Indicator_Code

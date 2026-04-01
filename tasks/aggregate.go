@@ -100,7 +100,7 @@ func (p *AggregateTaskPayload) Process(ctx context.Context) error {
 
 	_ = jl.UpdateStatusAndErrors(status, errors)
 
-	if config.DHIS2GWConf.API.SaveResponse == "true" && dhis2Resp != "" {
+	if config.MustGet().Config.API.SaveResponse == "true" && dhis2Resp != "" {
 		_ = jl.UpdateResponse(dhis2Resp)
 	}
 

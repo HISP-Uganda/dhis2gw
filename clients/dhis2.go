@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync/atomic"
 
 	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/HISP-Uganda/go-dhis2-sdk/dhis2/schema"
@@ -17,15 +18,8 @@ import (
 
 var Dhis2Client *Client
 var Dhis2Server *Server
-
-func init() {
-	InitDhis2Server()
-	c, err := Dhis2Server.NewDhis2Client()
-	if err != nil {
-		log.WithError(err).Fatal("Failed to initialize DHIS2 client")
-	}
-	Dhis2Client = c
-}
+var dhis2ClientPtr atomic.Pointer[Client]
+var dhis2ServerPtr atomic.Pointer[Server]
 
 func GetDHIS2BaseURL(url string) (string, error) {
 	// Accept URLs with or without /api segment
@@ -42,14 +36,29 @@ func GetDHIS2BaseURL(url string) (string, error) {
 	return url, nil
 }
 
-func InitDhis2Server() {
-	Dhis2Server = &Server{
-		BaseUrl:    config.DHIS2GWConf.API.DHIS2BaseURL,
-		Username:   config.DHIS2GWConf.API.DHIS2User,
-		Password:   config.DHIS2GWConf.API.DHIS2Password,
-		AuthToken:  config.DHIS2GWConf.API.DHIS2PAT,
-		AuthMethod: config.DHIS2GWConf.API.DHIS2AuthMethod,
+func InitDhis2Server() *Server {
+	cfg := config.MustGet().Config
+	server := &Server{
+		BaseUrl:    cfg.API.DHIS2BaseURL,
+		Username:   cfg.API.DHIS2User,
+		Password:   cfg.API.DHIS2Password,
+		AuthToken:  cfg.API.DHIS2PAT,
+		AuthMethod: cfg.API.DHIS2AuthMethod,
 	}
+	dhis2ServerPtr.Store(server)
+	Dhis2Server = server
+	return server
+}
+
+func Init() error {
+	server := InitDhis2Server()
+	c, err := server.NewDhis2Client()
+	if err != nil {
+		return err
+	}
+	dhis2ClientPtr.Store(c)
+	Dhis2Client = c
+	return nil
 }
 
 func (s *Server) NewDhis2Client() (*Client, error) {
@@ -133,6 +142,9 @@ func PushDataValues(dataValues []schema.DataValue) error {
 }
 
 func GetDhis2Client() *Client {
+	if client := dhis2ClientPtr.Load(); client != nil {
+		return client
+	}
 	return Dhis2Client
 }
 

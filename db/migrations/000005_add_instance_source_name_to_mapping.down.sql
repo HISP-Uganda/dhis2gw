@@ -1,3 +1,4 @@
+
 ALTER TABLE  dhis2_mappings DROP COLUMN IF EXISTS instance_name;
 ALTER TABLE  dhis2_mappings DROP COLUMN IF EXISTS source_name;
 

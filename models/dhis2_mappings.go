@@ -1,9 +1,11 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"dhis2gw/db"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -11,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	log "github.com/sirupsen/logrus"
 	"github.com/xuri/excelize/v2"
 )
@@ -24,7 +27,7 @@ type Dhis2Mapping struct {
 	Description         string    `json:"description,omitempty" db:"description"`
 	DataSet             string    `json:"dataSet,omitempty" db:"dataset"`
 	DataElement         string    `json:"dataElement,omitempty" db:"dataelement"`
-	CategoryOptionCombo string    `json:"categoryOptionCombo,omitempty" db:"category_option_combo"`
+	CategoryOptionCombo *string   `json:"categoryOptionCombo,omitempty" db:"category_option_combo"`
 	CategoryOption      string    `json:"categoryOption,omitempty" db:"category_option"`
 	CategoryCombo       string    `json:"categoryCombo,omitempty" db:"category_combo"`
 	InstanceName        string    `json:"instanceName,omitempty" db:"instance_name"`
@@ -76,7 +79,7 @@ INSERT INTO dhis2_mappings(code, what, name, description, dataset, dataelement,
 VALUES(:code, :what, :name, :description, :dataset, :dataelement, 
     :category_option_combo, :category_option, :category_combo, :instance_name, :source_name, :source_orgunit, 
 	:dest_orgunit, NOW(), NOW()) 
-ON CONFLICT (code, dataset)
+ON CONFLICT ON CONSTRAINT unique_code_source_instance_what
 DO NOTHING 
 RETURNING id`
 
@@ -340,8 +343,11 @@ func ParseDhis2MappingCSV(file multipart.File) ([]Dhis2Mapping, error) {
 			m.DataElement = record[idx]
 		}
 
-		if idx, ok := headerMap["category_option_combo"]; ok {
-			m.CategoryOptionCombo = record[idx]
+		if idx, ok := headerMap["category_option_combo"]; ok && idx < len(record) {
+			if record[idx] != "" {
+				v := record[idx]
+				m.CategoryOptionCombo = &v
+			}
 		}
 		if idx, ok := headerMap["category_option"]; ok {
 			m.CategoryOption = record[idx]
@@ -382,7 +388,6 @@ func ParseDhis2MappingExcel(file multipart.File) ([]Dhis2Mapping, error) {
 	}
 
 	for _, row := range rows[1:] {
-		fmt.Printf("Row: %v\n", row)
 		var m Dhis2Mapping
 
 		if idx, ok := headerMap["code"]; ok && idx < len(row) {
@@ -405,7 +410,10 @@ func ParseDhis2MappingExcel(file multipart.File) ([]Dhis2Mapping, error) {
 		}
 
 		if idx, ok := headerMap["category_option_combo"]; ok && idx < len(row) {
-			m.CategoryOptionCombo = row[idx]
+			if row[idx] != "" {
+				v := row[idx]
+				m.CategoryOptionCombo = &v
+			}
 		}
 		if idx, ok := headerMap["category_option"]; ok && idx < len(row) {
 			m.CategoryOption = row[idx]
@@ -532,6 +540,33 @@ func GetDataElementMapping(code, instanceName string) (*Dhis2Mapping, error) {
 		// log.WithError(err).Error("Failed to get data element mapping")
 		return nil, err
 	}
+	return &mapping, nil
+}
+
+var ErrMappingNotFound = errors.New("data element mapping not found")
+
+func GetDataElementMappingWithContext(ctx context.Context, dbConn sqlx.QueryerContext, code, instanceName string) (*Dhis2Mapping, error) {
+	code = strings.TrimSpace(code)
+	instanceName = strings.TrimSpace(instanceName)
+
+	const q = `
+		SELECT *
+		FROM dhis2_mappings
+		WHERE code = $1
+		  AND instance_name = $2
+		  AND what = 'de'
+		LIMIT 1
+	`
+
+	var mapping Dhis2Mapping
+	err := sqlx.GetContext(ctx, dbConn, &mapping, q, code, instanceName)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: code=%q instance=%q", ErrMappingNotFound, code, instanceName)
+		}
+		return nil, fmt.Errorf("get data element mapping failed: code=%q instance=%q: %w", code, instanceName, err)
+	}
+
 	return &mapping, nil
 }
 

@@ -15,8 +15,12 @@ import (
 
 func BasicAuth(dbConn *sqlx.DB, asynqClient *asynq.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Set("dbConn", dbConn)
-		c.Set("asynqClient", asynqClient)
+		if dbConn != nil {
+			c.Set("dbConn", dbConn)
+		}
+		if asynqClient != nil {
+			c.Set("asynqClient", asynqClient)
+		}
 
 		auth := strings.SplitN(c.Request.Header.Get("Authorization"), " ", 2)
 

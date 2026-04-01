@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"dhis2gw/bootstrap"
 	"dhis2gw/cmd"
 	"dhis2gw/config"
 	"dhis2gw/controllers"
 	"dhis2gw/db"
 	"dhis2gw/docs"
 	"dhis2gw/middleware"
+	"dhis2gw/models"
 	"dhis2gw/tasks"
 	"dhis2gw/utils"
 	"fmt"
@@ -30,15 +32,6 @@ import (
 	"github.com/hibiken/asynq"
 	log "github.com/sirupsen/logrus"
 )
-
-func init() {
-	formatter := new(log.TextFormatter)
-	formatter.TimestampFormat = time.RFC3339
-	formatter.FullTimestamp = true
-
-	log.SetFormatter(formatter)
-	log.SetOutput(os.Stdout)
-}
 
 var splash = `
 ╺┳┓╻ ╻╻┏━┓┏━┓   ┏━╸┏━┓╺┳╸┏━╸╻ ╻┏━┓╻ ╻
@@ -65,6 +58,37 @@ var client *asynq.Client
 // @name Authorization
 
 func main() {
+	bootstrap.InitLogging()
+	fmt.Print(splash)
+	runtimeCfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	config.Set(runtimeCfg)
+	cfg := runtimeCfg.Config
+	if _, err := db.Init(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	if err := models.InitLocation(); err != nil {
+		log.Fatalf("Failed to initialize schedules location: %v", err)
+	}
+	if err := models.InitServers(); err != nil {
+		log.Fatalf("Failed to initialize server cache: %v", err)
+	}
+	if _, err := config.Watch(func(_, _ *config.RuntimeConfig) {
+		if _, err := db.Init(); err != nil {
+			log.WithError(err).Error("Failed to reload database")
+		}
+		if err := models.InitLocation(); err != nil {
+			log.WithError(err).Error("Failed to reload schedules location")
+		}
+		if err := models.InitServers(); err != nil {
+			log.WithError(err).Error("Failed to reload server cache")
+		}
+	}); err != nil {
+		log.WithError(err).Warn("Failed to start config watcher")
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
@@ -73,28 +97,27 @@ func main() {
 		}
 		return
 	}
-	fmt.Printf(splash)
-	client = asynq.NewClient(asynq.RedisClientOpt{Addr: config.DHIS2GWConf.Server.RedisAddress})
+	client = asynq.NewClient(asynq.RedisClientOpt{Addr: cfg.Server.RedisAddress})
 	defer func(client *asynq.Client) {
 		_ = client.Close()
 	}(client)
 
 	dhis2Client := sdk.NewClient(
-		config.DHIS2GWConf.API.DHIS2BaseURL,
-		config.DHIS2GWConf.API.DHIS2User,
-		config.DHIS2GWConf.API.DHIS2Password)
+		cfg.API.DHIS2BaseURL,
+		cfg.API.DHIS2User,
+		cfg.API.DHIS2Password)
 	tasks.SetClient(dhis2Client)
 
 	var wg sync.WaitGroup
 
 	wg.Add(2)
-	go startAPIServer(ctx, &wg)
-	go startWorker(ctx, &wg)
+	go startAPIServer(ctx, &wg, cfg)
+	go startWorker(ctx, &wg, cfg)
 
 	wg.Wait()
 }
 
-func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
+func startAPIServer(ctx context.Context, wg *sync.WaitGroup, cfg config.Config) {
 	defer wg.Done()
 
 	router := gin.Default()
@@ -112,9 +135,9 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 		},
 	}
 	tmpl := template.Must(template.New("").Funcs(funcMap).ParseGlob(
-		config.DHIS2GWConf.Server.TemplatesDirectory + "/*"))
+		cfg.Server.TemplatesDirectory + "/*"))
 	router.SetHTMLTemplate(tmpl)
-	staticDir := config.DHIS2GWConf.Server.StaticDirectory
+	staticDir := cfg.Server.StaticDirectory
 	router.Static("/static", staticDir)
 
 	docs.SwaggerInfo.BasePath = "/api/v2"
@@ -165,11 +188,12 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 			"title": "API Documentation",
 		})
 	})
+
 	router.GET("/docs/:page", func(c *gin.Context) {
 		docName := c.Param("page")
 
 		// Construct Markdown file path
-		mdFile := fmt.Sprintf("%s/%s.md", config.DHIS2GWConf.Server.DocsDirectory, docName)
+		mdFile := fmt.Sprintf("%s/%s.md", cfg.Server.DocsDirectory, docName)
 
 		// Read Markdown file
 		mdContent, err := os.ReadFile(mdFile)
@@ -193,14 +217,14 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 
 	// Use http.Server for graceful shutdown
 	httpServer := &http.Server{
-		Addr:    ":" + fmt.Sprintf("%s", config.DHIS2GWConf.Server.Port),
+		Addr:    ":" + fmt.Sprintf("%s", cfg.Server.Port),
 		Handler: router,
 	}
 
 	// Start the server in a goroutine
 	errCh := make(chan error, 1)
 	go func() {
-		log.Infof("Starting API server on :%s...", config.DHIS2GWConf.Server.Port)
+		log.Infof("Starting API server on :%s...", cfg.Server.Port)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
@@ -221,16 +245,16 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func startWorker(ctx context.Context, wg *sync.WaitGroup) {
+func startWorker(ctx context.Context, wg *sync.WaitGroup, cfg config.Config) {
 	defer wg.Done()
 
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{
-			Addr: config.DHIS2GWConf.Server.RedisAddress, DB: config.DHIS2GWConf.Server.RedisDB},
+			Addr: cfg.Server.RedisAddress, DB: cfg.Server.RedisDB},
 		asynq.Config{
-			Concurrency: config.DHIS2GWConf.Server.MaxConcurrent,
+			Concurrency: cfg.Server.MaxConcurrent,
 
-			Queues: utils.Queues(config.DHIS2GWConf.Server.QueuePrefix),
+			Queues: utils.Queues(cfg.Server.QueuePrefix),
 		},
 	)
 

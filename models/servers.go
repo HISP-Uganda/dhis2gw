@@ -22,64 +22,81 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lib/pq"
 )
 
-func init() {
+var serverCacheMu sync.RWMutex
+
+func InitServers() error {
+	cfg := config.MustGet().Config
+
 	var migrationsDir string
 	currentOS := runtime.GOOS
 	switch currentOS {
 	case "windows":
 		migrationsDir = "file:///C:\\ProgramData\\MFLIntegrator"
 	case "darwin", "linux":
-		migrationsDir = config.DHIS2GWConf.Server.MigrationsDirectory
+		migrationsDir = cfg.Server.MigrationsDirectory
 	default:
 		migrationsDir = "file://db/migrations"
 	}
 	m, err := migrate.New(
 		// "file:///usr/share/mflintegrator/db/migrations", // file://db/migrations
 		migrationsDir,
-		config.DHIS2GWConf.Database.URI)
+		cfg.Database.URI)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatal("Error running migration:", err)
+		return fmt.Errorf("error running migration: %w", err)
 	}
 
-	if err != nil {
-		log.Fatalln(err)
+	if err := CreateBaseDHIS2Server(); err != nil {
+		return err
 	}
-	CreateBaseDHIS2Server()
 	rows, err := db.GetDB().Queryx("SELECT * FROM servers")
 
 	if err != nil {
-		log.WithError(err).Info("Failed to load servers")
+		return err
 	}
-	ServerMap = make(map[string]Server)
-	ServerMapByName = make(map[string]Server)
+	serverMap := make(map[string]Server)
+	serverMapByName := make(map[string]Server)
 	for rows.Next() {
 		srv := Server{}
 
 		err := rows.StructScan(&srv.s)
 		if err != nil {
-			log.Fatalln("Server Loading ==>", err)
+			_ = rows.Close()
+			return fmt.Errorf("server loading: %w", err)
 		}
 
-		ServerMap[strconv.Itoa(int(srv.s.ID))] = srv
-		ServerMapByName[srv.s.Name] = srv
+		serverMap[strconv.Itoa(int(srv.s.ID))] = srv
+		serverMapByName[srv.s.Name] = srv
 		// log.WithField("SERVER", srv.s).Info("=====>")
 
 	}
 	// log.WithField("ServerMapByName", ServerMapByName).Info("========>")
 	_ = rows.Close()
+	serverCacheMu.Lock()
+	ServerMap = serverMap
+	ServerMapByName = serverMapByName
+	serverCacheMu.Unlock()
+	return nil
 }
 
 // ServerMap is the List of Servers
 var ServerMap map[string]Server
 var ServerMapByName map[string]Server
+
+func getServerFromCacheByName(name string) (Server, bool) {
+	serverCacheMu.RLock()
+	defer serverCacheMu.RUnlock()
+	srv, ok := ServerMapByName[name]
+	return srv, ok
+}
 
 // ServerID is the id for the server
 type ServerID int64
@@ -416,7 +433,7 @@ func NewServer(c *gin.Context, db *sqlx.DB) (Server, error) {
 			_ = rows.Scan(&serverId)
 			if len(srv.s.AllowedSources) > 0 {
 				servers := lo.Map(srv.s.AllowedSources, func(name string, _ int) int64 {
-					iSrv := ServerMapByName[name]
+					iSrv, _ := getServerFromCacheByName(name)
 					return int64(iSrv.ID())
 				})
 				allowedSources := ServerAllowedApps{ServerID: serverId, AllowedServers: servers}
@@ -517,7 +534,7 @@ func CreateServers(db *sqlx.DB, servers []Server) (dbutils.MapAnything, error) {
 				_ = rows.Scan(&serverId)
 				if len(server.s.AllowedSources) > 0 {
 					servers := lo.Map(server.s.AllowedSources, func(name string, _ int) int64 {
-						iSrv := ServerMapByName[name]
+						iSrv, _ := getServerFromCacheByName(name)
 						return int64(iSrv.ID())
 					})
 					allowedSources := ServerAllowedApps{ServerID: serverId, AllowedServers: servers}
@@ -533,14 +550,15 @@ func CreateServers(db *sqlx.DB, servers []Server) (dbutils.MapAnything, error) {
 	return importSummary, nil
 }
 
-func CreateBaseDHIS2Server() {
+func CreateBaseDHIS2Server() error {
+	cfg := config.MustGet().Config
 	metadataServer := &Server{}
 	metadataServer.s.Name = "base_OU"
-	metadataServer.s.URL = config.DHIS2GWConf.API.DHIS2BaseURL + "/metadata.json"
-	metadataServer.s.Username = config.DHIS2GWConf.API.DHIS2User
-	metadataServer.s.Password = config.DHIS2GWConf.API.DHIS2Password
+	metadataServer.s.URL = cfg.API.DHIS2BaseURL + "/metadata.json"
+	metadataServer.s.Username = cfg.API.DHIS2User
+	metadataServer.s.Password = cfg.API.DHIS2Password
 	metadataServer.s.AuthMethod = "Basic"
-	metadataServer.s.AuthToken = config.DHIS2GWConf.API.DHIS2PAT
+	metadataServer.s.AuthToken = cfg.API.DHIS2PAT
 	metadataServer.s.EndPointType = "OUMetadata"
 
 	metadataServer.s.IPAddress = "*"
@@ -552,7 +570,7 @@ func CreateBaseDHIS2Server() {
 	if err := json.Unmarshal([]byte(`{"mergeMode":"REPLACE", "importStrategy": "CREATE_AND_UPDATE","async": true,
 "importReportMode": "DEBUG"}`), &urlParams); err != nil {
 		log.WithError(err).Error("Failed to unmarshal server URL params")
-		return
+		return err
 	}
 	metadataServer.s.URLParams = urlParams
 	metadataServer.s.StartOfSubmissionPeriod = 0
@@ -561,14 +579,14 @@ func CreateBaseDHIS2Server() {
 	ouGroupAddServer := *metadataServer
 	ouGroupAddServer.s.Name = "base_OU_GroupAdd"
 	ouGroupAddServer.s.HTTPMethod = "PATCH"
-	ouGroupAddServer.s.URL = config.DHIS2GWConf.API.DHIS2BaseURL + "/organisationUnitGroups"
+	ouGroupAddServer.s.URL = cfg.API.DHIS2BaseURL + "/organisationUnitGroups"
 	ouGroupAddServer.s.EndPointType = "OU_ORGUNIT_GROUP_ADD"
 	ouGroupAddServer.s.URLParams = make(dbutils.MapAnything)
 
 	ouUpdateServer := *metadataServer
 	ouUpdateServer.s.Name = "base_OU_Update"
 	ouUpdateServer.s.HTTPMethod = "PATCH"
-	ouUpdateServer.s.URL = config.DHIS2GWConf.API.DHIS2BaseURL + "/organisationUnits"
+	ouUpdateServer.s.URL = cfg.API.DHIS2BaseURL + "/organisationUnits"
 	ouUpdateServer.s.EndPointType = "OU_ORGUNIT_UPDATE"
 	ouUpdateServer.s.URLParams = make(dbutils.MapAnything)
 
@@ -576,11 +594,14 @@ func CreateBaseDHIS2Server() {
 	summary, err := CreateServers(db.GetDB(), serverList)
 	if err != nil {
 		log.WithError(err).Error("Failed to create base DHIS server in dispatcher")
+		return err
 	}
 	log.WithFields(log.Fields{"Server": metadataServer.UID(), "Summary": summary}).Info("Server Creation Summary")
+	return nil
 }
 
 func SyncLocationsToServer(serverName string) {
+	cfg := config.MustGet()
 	// Servers in this config can receive the base DHIS2 organisation unit hierarchy
 	log.WithField("CCDHIS2", serverName).Info("CC Hierarchy Servers")
 	server, err := GetServerByName(serverName)
@@ -598,7 +619,7 @@ func SyncLocationsToServer(serverName string) {
 	p.Add("fields", "id,name")
 	p.Add("paging", "true")
 	p.Add("pageSize", "1")
-	p.Add("level", fmt.Sprintf("%d", config.DHIS2GWConf.API.DHIS2FacilityLevel))
+	p.Add("level", fmt.Sprintf("%d", cfg.Config.API.DHIS2FacilityLevel))
 	chekOusURL := baseDHIS2URL + "/api/organisationUnits.json?"
 	//if strings.LastIndex(ouURL, "?") == len(ouURL)-1 {
 	//	ouURL += p.Encode()
@@ -633,9 +654,9 @@ func SyncLocationsToServer(serverName string) {
 		if err != nil {
 			log.WithError(err).Error("json parser failed to get pager.total key")
 		}
-		if string(v) != "0" && !*config.ForceSync {
+		if string(v) != "0" && !cfg.Flags.ForceSync {
 
-			log.WithField("ForceSync", *config.ForceSync).Info("FORCE SYNC >>>>>>>>>>")
+			log.WithField("ForceSync", cfg.Flags.ForceSync).Info("FORCE SYNC >>>>>>>>>>")
 			return // we have ous already
 		}
 		log.WithField("Server", serverName).Info("We can now sync the hierarchy!!")
@@ -659,7 +680,7 @@ func SyncLocationsToServer(serverName string) {
 
 		// Send Ous
 		// for level := 1; level < 3; level++ {
-		for level := 1; level < config.DHIS2GWConf.API.DHIS2FacilityLevel; level++ {
+		for level := 1; level < cfg.Config.API.DHIS2FacilityLevel; level++ {
 
 			syncOus := GenerateOuMetadataByLevel(level)
 			//for _, ou := range syncOus {
@@ -670,7 +691,7 @@ func SyncLocationsToServer(serverName string) {
 			//		log.WithFields(log.Fields{"Server": serverName, "Response": string(rBody)}).Info("Metadata Import")
 			//	}
 			//}
-			ouChunks := lo.Chunk(syncOus, config.DHIS2GWConf.API.MetadataBatchSize)
+			ouChunks := lo.Chunk(syncOus, cfg.Config.API.MetadataBatchSize)
 			// ouChunks := lo.Chunk(syncOus, 1)
 
 			for _, chunck := range ouChunks {
@@ -682,7 +703,7 @@ func SyncLocationsToServer(serverName string) {
 				if rBody != nil {
 					log.WithFields(log.Fields{"Server": serverName, "Response": string(rBody)}).Info("Metadata Import")
 				}
-				if level < config.DHIS2GWConf.API.DHIS2FacilityLevel-1 {
+				if level < cfg.Config.API.DHIS2FacilityLevel-1 {
 					time.Sleep(5 * time.Second) // give a longer time to ensure creation on the other side
 				} else {
 					time.Sleep(3 * time.Second)

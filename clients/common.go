@@ -1,6 +1,8 @@
 package clients
 
 import (
+	"context"
+	"fmt"
 	"net/url"
 	"sync"
 	"time"
@@ -46,15 +48,63 @@ func (c *Client) GetResource(resourcePath string, params map[string]string) (*re
 	}
 	return resp, err
 }
-func (c *Client) PostResource(resourcePath string, data interface{}) (*resty.Response, error) {
-	resp, err := c.RestClient.R().
+func (c *Client) PostResource(resourcePath string, data interface{}, opts ...RequestOption) (*resty.Response, error) {
+	req := c.RestClient.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(data).
-		Post(resourcePath)
+		SetBody(data)
+
+	for _, opt := range opts {
+		if opt != nil {
+			opt(req)
+		}
+	}
+
+	resp, err := req.Post(resourcePath)
 	if err != nil {
 		log.Errorf("Error when calling `PostResource: %v`", err)
 	}
-	return resp, err
+	// Optional: treat non-2xx as an error (often useful in APIs)
+	if resp != nil && resp.IsError() {
+		// you can wrap a richer error if you want
+		return resp, fmt.Errorf("PostResource failed: status=%d body=%s", resp.StatusCode(), string(resp.Body()))
+	}
+
+	return resp, nil
+}
+
+type RequestOption func(*resty.Request)
+
+// WithQuery adds query parameters (?a=b&c=d)
+func WithQuery(params map[string]string) RequestOption {
+	return func(r *resty.Request) {
+		if len(params) > 0 {
+			r.SetQueryParams(params)
+		}
+	}
+}
+
+// WithHeader adds a single header
+func WithHeader(key, value string) RequestOption {
+	return func(r *resty.Request) {
+		if key != "" {
+			r.SetHeader(key, value)
+		}
+	}
+}
+
+// WithHeaders adds multiple headers
+func WithHeaders(headers map[string]string) RequestOption {
+	return func(r *resty.Request) {
+		if len(headers) > 0 {
+			r.SetHeaders(headers)
+		}
+	}
+}
+
+func WithContext(ctx context.Context) RequestOption {
+	return func(r *resty.Request) {
+		r.SetContext(ctx)
+	}
 }
 
 func (c *Client) PutResource(resourcePath string, data interface{}) (*resty.Response, error) {

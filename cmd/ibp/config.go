@@ -163,16 +163,17 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// ✅ Custom computed fields
+	baseCfg := config.MustGet().Config
 	c.InstanceName = "train.ndpme"
 	c.SourceName = "pbs"
 	c.DHIS2URL = utils.CoalesceString(
-		"", config.DHIS2GWConf.API.DHIS2BaseURL, "https://play.im.dhis2.org/stable-2-42-3/api/",
+		"", baseCfg.API.DHIS2BaseURL, "https://play.im.dhis2.org/stable-2-42-3/api/",
 	)
 	c.DHIS2User = utils.CoalesceString(
-		"", config.DHIS2GWConf.API.DHIS2User, "admin",
+		"", baseCfg.API.DHIS2User, "admin",
 	)
 	c.DHIS2Password = utils.CoalesceString(
-		config.DHIS2GWConf.API.DHIS2Password, "district",
+		baseCfg.API.DHIS2Password, "district",
 	)
 	c.Defaults = map[string]any{
 		"xR2SRSZxDSl": "true",
