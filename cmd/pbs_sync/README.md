@@ -35,12 +35,86 @@ The tool relies on the global application configuration. Key PBS settings includ
 
 | Key | Environment Variable | Description |
 | :--- | :--- | :--- |
-| `pbs.pbs_url` | `PBS_URL` | The base URL for the PBS GraphQL API. |
+| `pbs.pbsurl` | `PBS_URL` | The base URL for the PBS GraphQL API. |
 | `pbs.user` | `PBS_USER` | Username for PBS authentication. |
 | `pbs.password` | `PBS_PASSWORD` | Password for PBS authentication. |
+| `pbs.ipaddress` | `PBS_IPADDRESS` | Optional IP address sent during PBS login. |
+| `pbs.jwt` | `PBS_JWT` | Static JWT used instead of username/password authentication. |
 | `pbs.fiscal_year` | `PBS_FISCAL_YEAR` | The target fiscal year to fetch (e.g., "2025-2026"). |
+| `pbs.instance_name` | N/A | Source instance name used when resolving DHIS2 mappings. |
+| `pbs.default_category_option_combo` | `PBS_DEFAULT_CATEGORY_OPTION_COMBO` | Default DHIS2 category option combo UID used when no specific mapping exists. |
 | `pbs.sync.once` | `PBSSYNC_ONCE` | If `true`, runs once and exits. If `false`, runs periodically. |
 | `pbs.sync.interval` | `PBSSYNC_INTERVAL` | Duration string (e.g., "1h", "24h") for sync frequency. |
+| `pbs.sync.window` | `PBSSYNC_WINDOW` | Configured PBS sync window duration. |
+| `pbs.sync.since` | `PBSSYNC_SINCE` | Configured lower time bound for PBS sync. |
+| `pbs.sync.until` | `PBSSYNC_UNTIL` | Configured upper time bound for PBS sync. |
+| `pbs.sync.page_size` | `PBSSYNC_PAGE_SIZE` | Configured page size for PBS fetches. |
+| `pbs.cache.enabled` | `PBSSYNC_CACHE_ENABLED` | Enables local caching of PBS GraphQL responses. |
+| `pbs.cache.use_cache_only` | `PBSSYNC_USE_CACHE_ONLY` | Uses cached PBS data only and skips network fetches. |
+| `pbs.cache.cache_dir` | `PBSSYNC_CACHE_DIR` | Cache directory for PBS payloads. |
+| `pbs.cache.ttl` | `PBSSYNC_CACHE_TTL` | Cache TTL duration. `0` means entries never expire. |
+| `pbs.cache.endpoint` | `PBSSYNC_CACHE_ENDPOINT` | Optional endpoint tag included in cache keys. |
+| `pbs.cache.schema_tag` | `PBSSYNC_CACHE_SCHEMA_TAG` | Optional schema tag included in cache keys. |
+
+#### PBS-Specific Notes
+
+- Authentication supports either `PBS_USER` plus `PBS_PASSWORD`, or `PBS_JWT`.
+- `pbs.category_option_combos` can be used to map PBS-derived values such as `approved`, `release`, `expenditure`, `cg_piap_indicator_projections_actual`, and `cg_piap_indicator_projections_target_y1` to DHIS2 category option combo metadata.
+- `pbs.instance_name` should match the source name used in the DHIS2 mapping records for organisation units and data elements.
+- `pbs.cache.use_cache_only=true` allows the command to run from previously cached PBS responses when the PBS API is unavailable.
+- The command also depends on the shared database and DHIS2 client configuration used by the wider `dhis2gw` application.
+
+#### Example PBS Configuration
+
+```yaml
+pbs:
+  pbsurl: https://api.pbs.go.ug/graphql
+  user: admin
+  password: secure_password
+  ipaddress: ""
+  jwt: ""
+  fiscal_year: "2024-2025"
+  instance_name: pbs
+  default_category_option_combo: "<dhis2-coc-uid>"
+
+  category_option_combos:
+    approved:
+      uid: "<coc-uid>"
+      combo: "<cc-uid>"
+      option: "<co-uid>"
+    release:
+      uid: "<coc-uid>"
+      combo: "<cc-uid>"
+      option: "<co-uid>"
+    expenditure:
+      uid: "<coc-uid>"
+      combo: "<cc-uid>"
+      option: "<co-uid>"
+    cg_piap_indicator_projections_actual:
+      uid: "<coc-uid>"
+      combo: "<cc-uid>"
+      option: "<co-uid>"
+    cg_piap_indicator_projections_target_y1:
+      uid: "<coc-uid>"
+      combo: "<cc-uid>"
+      option: "<co-uid>"
+
+  sync:
+    once: true
+    interval: 6h
+    window: 24h
+    since: 2023-01-01T00:00:00Z
+    until: 2023-12-31T23:59:59Z
+    page_size: 200
+
+  cache:
+    enabled: true
+    use_cache_only: false
+    cache_dir: /var/cache/pbsync
+    ttl: 0
+    endpoint: ""
+    schema_tag: ""
+```
 
 #### Running the Command
 
@@ -65,6 +139,7 @@ export PBS_USER="admin"
 export PBS_PASSWORD="secure_password"
 export PBS_FISCAL_YEAR="2024-2025"
 export PBSSYNC_ONCE="true"
+export PBSSYNC_CACHE_ENABLED="true"
 
 go run cmd/pbs_sync/main.go
 ```
