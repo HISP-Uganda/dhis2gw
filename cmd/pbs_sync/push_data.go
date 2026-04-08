@@ -86,7 +86,7 @@ func EncodeComment(explanation string, attachments []string) (string, error) {
 	return string(j), nil
 }
 
-func PushIndividualDataValues(dataValues []ExtendedDataValue) error {
+func PushIndividualDataValues(ctx context.Context, dataValues []ExtendedDataValue) error {
 	if len(dataValues) == 0 {
 		return nil
 	}
@@ -95,11 +95,10 @@ func PushIndividualDataValues(dataValues []ExtendedDataValue) error {
 		return errors.New("DHIS2 client is not initialized")
 	}
 
-	ctx := context.Background()
-
 	err := SendWithWorkers(ctx, dataValues, 5, SendDataValue)
 	if err != nil {
 		log.WithError(err).Error("SendWithWorkers: Failed to send data value to DHIS2")
+		return err
 	}
 
 	return nil
@@ -115,13 +114,27 @@ func SendWithWorkers[T any](
 	var wg sync.WaitGroup
 	errCh := make(chan error, len(items))
 
+loop:
 	for i, item := range items {
-		wg.Add(1)
-		sem <- struct{}{}
+		if err := ctx.Err(); err != nil {
+			break
+		}
 
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			break loop
+		}
+
+		wg.Add(1)
 		go func(i int, item T) {
 			defer wg.Done()
 			defer func() { <-sem }()
+
+			if err := ctx.Err(); err != nil {
+				errCh <- fmt.Errorf("index %d: %w", i, err)
+				return
+			}
 
 			if err := sender(ctx, item); err != nil {
 				errCh <- fmt.Errorf("index %d: %w", i, err)
@@ -136,5 +149,5 @@ func SendWithWorkers[T any](
 		return <-errCh // return first error
 	}
 
-	return nil
+	return ctx.Err()
 }

@@ -9,6 +9,7 @@ import (
 	"dhis2gw/db"
 	"dhis2gw/mappings"
 	"dhis2gw/models"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -32,20 +33,34 @@ const dvBatchSize = 50
 
 func main() {
 	fmt.Print(splash)
+	if err := run(); err != nil {
+		if errors.Is(err, context.Canceled) {
+			log.Info("pbs-sync: interrupted, shutting down cleanly")
+			return
+		}
+		log.Fatalf("pbs-sync: %v", err)
+	}
+}
+
+func run() error {
+	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	runtimeCfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 	config.Set(runtimeCfg)
 	cfg := runtimeCfg.Config
+
 	if _, err := db.Init(); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		return fmt.Errorf("failed to initialize database: %w", err)
 	}
 	if err := clients.Init(); err != nil {
-		log.Fatalf("Failed to initialize DHIS2 client: %v", err)
+		return fmt.Errorf("failed to initialize DHIS2 client: %w", err)
 	}
 	if err := models.InitLocation(); err != nil {
-		log.Fatalf("Failed to initialize schedules location: %v", err)
+		return fmt.Errorf("failed to initialize schedules location: %w", err)
 	}
 	if _, err := config.Watch(func(_, _ *config.RuntimeConfig) {
 		if _, err := db.Init(); err != nil {
@@ -68,22 +83,17 @@ func main() {
 
 	cacheDir, err := resolveCacheDir(cfg.PBS.Cache.CacheDir, "pbs-sync")
 	if err != nil {
-		log.Fatalf("failed to resolve cache dir(%s): %v", cacheDir, err)
+		return fmt.Errorf("failed to resolve cache dir(%s): %w", cfg.PBS.Cache.CacheDir, err)
 	}
 	log.Infof("Cache directory: %s", cacheDir)
 
 	dbConn := db.GetDB()
-	ctx := context.Background()
-
 	mappingCache := mappings.NewMappingCache(dbConn, "pbs")
-
-	if err := mappingCache.Load(ctx); err != nil {
-		log.Fatalf("failed to load mapping cache: %v", err)
+	if err := mappingCache.Load(rootCtx); err != nil {
+		return fmt.Errorf("failed to load mapping cache: %w", err)
 	}
-
 	log.Printf("Loaded %d mappings", mappingCache.Size())
 
-	// ---- Build token source ----
 	var ts pbs.JWTTokenSource
 	if cfg.PBS.User != "" && cfg.PBS.Password != "" {
 		ts = pbs.NewPBSTokenSource(
@@ -95,66 +105,55 @@ func main() {
 	} else if cfg.PBS.JWT != "" {
 		ts = pbs.NewStaticJWTSource(cfg.PBS.JWT)
 	} else {
-		log.Fatal("pbs-sync: no authentication config provided")
+		return errors.New("no authentication config provided")
 	}
 
-	// ---- PBS client ----
 	client := pbs.NewClient(baseURL, ts)
 
-	// ---- Graceful shutdown context ----
-	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	// ---- Validate token early ----
 	tokenCtx, cancelToken := context.WithTimeout(rootCtx, 10*time.Minute)
 	defer cancelToken()
 
 	_, err = ts.Token(tokenCtx)
-	if err != nil {
-		if !cfg.PBS.Cache.UseCacheOnly {
-			log.Fatalf("pbs-sync: token error: %v", err)
-
+	if err != nil && !cfg.PBS.Cache.UseCacheOnly {
+		if errors.Is(err, context.Canceled) {
+			return context.Canceled
 		}
-		// log.Fatalf("pbs-sync: token error: %v", err)
+		return fmt.Errorf("token error: %w", err)
 	}
-	// log.Infof("pbs-sync: token: %v", token)
 
 	if once {
 		log.Info("pbs-sync: running once")
-		//if err := fetchOutturns(ctx, client, fy); err != nil {
-		//	log.Fatalf("pbs-sync: fetch error: %v", err)
-		//}
-		// Give long-running GraphQL enough time (adjust as needed)
 		runCtx, cancelRun := context.WithTimeout(rootCtx, 10*time.Minute)
 		defer cancelRun()
 
 		if err := fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy); err != nil {
-			log.Fatalf("pbs-sync: fetch error: %v", err)
+			if errors.Is(err, context.Canceled) {
+				return context.Canceled
+			}
+			return fmt.Errorf("fetch error: %w", err)
 		}
 		log.Println("pbs-sync: single run completed (Sync.Once=true)")
-
-		return
+		return nil
 	}
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
-		//if err := fetchOutturns(ctx, client, fy); err != nil {
-		//	log.Printf("pbs-sync: fetch error: %v", err)
-		//}
-		runCtx, cancelRun := context.WithTimeout(rootCtx, 10*time.Minute)
-		if err := fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy); err != nil {
-			log.Printf("pbs-sync: fetch error: %v", err)
-		}
-
-		cancelRun()
-
 		select {
 		case <-rootCtx.Done():
-			log.Println("pbs-sync: shutting down")
-			return
+			return context.Canceled
 		case <-ticker.C:
+		}
+
+		runCtx, cancelRun := context.WithTimeout(rootCtx, 10*time.Minute)
+		err := fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy)
+		cancelRun()
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				return context.Canceled
+			}
+			log.Printf("pbs-sync: fetch error: %v", err)
 		}
 	}
 }
@@ -262,8 +261,11 @@ func fetchPiapIndicatorProjectionsByFiscalYear(
 	log.Infof("pbs-sync: fetched %d piap indicator projections.", len(resp))
 
 	for _, row := range resp {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		// log.WithFields(log.Fields{"PiapIndicatortProjection": row}).Info("pbs-sync: piap indicator projection")
-		dvs, err2 := BuildPiapIndicatorProjectsDataValues(row, &cfg, mappingsCache)
+		dvs, err2 := BuildPiapIndicatorProjectionsDataValues(row, &cfg, mappingsCache)
 		if err2 != nil {
 			log.Warnf("pbs-sync: failed to build data values for piap indicator projection: %v", err2)
 			continue
@@ -285,14 +287,22 @@ func fetchPiapIndicatorProjectionsByFiscalYear(
 			}).Info("pbs-sync: data value")
 		}
 
-		_ = ForEachBatch(dvs, dvBatchSize, func(batch []ExtendedDataValue) error {
-			if err := PushIndividualDataValues(batch); err != nil {
+		if err := ForEachBatch(dvs, dvBatchSize, func(batch []ExtendedDataValue) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := PushIndividualDataValues(ctx, batch); err != nil {
+				if errors.Is(err, context.Canceled) {
+					return err
+				}
 				log.Errorf("pbs-sync: push data values error: %v", err)
 				return nil // swallow error to "continue" like before
 			}
 			log.Infof("pbs-sync: pushed %d data values to DHIS2", len(batch))
 			return nil
-		})
+		}); err != nil {
+			return err
+		}
 
 	}
 	return nil
@@ -447,7 +457,7 @@ func BuildPBSDataValues2(
 
 type ProjectionsDTO = pbs.CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYearOpmCgPiapIndicatorProjectionsDto
 
-func BuildPiapIndicatorProjectsDataValues(
+func BuildPiapIndicatorProjectionsDataValues(
 	row ProjectionsDTO,
 	cfg *config.Config,
 	mappingsCache *mappings.MappingCache,

@@ -4,6 +4,7 @@ workers/workers
 cmd/api/dhis2gw-api
 cmd/api/api
 cmd/ibp/ibp
+cmd/pbs_sync/pbs_sync
 cmd/worker/dhis2gw-worker
 cmd/worker/worker
 

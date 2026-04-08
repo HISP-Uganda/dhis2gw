@@ -217,12 +217,12 @@ func GetIndicatorProjections(
 
 		if _, err := os.Stat(file); err == nil {
 
-			// var cached pbs.CgPiapIndicatorProjectionsByFiscalYearResponse
-			var cached struct {
-				Data struct {
-					CgPiapIndicatorProjectionsByFiscalYear []ProjectionsDTO `json:"cgPiapIndicatorProjectionsByFiscalYear"`
-				} `json:"data"`
-			}
+			var cached pbs.CgPiapIndicatorProjectionsByFiscalYearResponse
+			//var cached struct {
+			//	Data struct {
+			//		CgPiapIndicatorProjectionsByFiscalYear []ProjectionsDTO `json:"cgPiapIndicatorProjectionsByFiscalYear"`
+			//	} `json:"data"`
+			//}
 			data, err := os.ReadFile(file)
 			if err != nil {
 				return nil, err
@@ -234,7 +234,8 @@ func GetIndicatorProjections(
 
 			fmt.Println("Loaded cached data:", file)
 
-			return cached.Data.CgPiapIndicatorProjectionsByFiscalYear, nil
+			// return cached.Data.CgPiapIndicatorProjectionsByFiscalYear, nil
+			return cached.CgPiapIndicatorProjectionsByFiscalYear, nil
 		}
 	}
 
