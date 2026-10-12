@@ -1,4 +1,4 @@
-.PHONY: all clean rtcgw worker
+.PHONY: all clean rtcgw worker release-check release-snapshot release
 
 all: dhis2gw worker
 
@@ -17,3 +17,12 @@ run-server: dhis2gw
 
 run-worker: worker
 	./workers/workers
+
+release-check:
+	goreleaser check
+
+release-snapshot:
+	goreleaser release --snapshot --rm-dist
+
+release:
+	goreleaser release --rm-dist

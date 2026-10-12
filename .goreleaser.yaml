@@ -1,14 +1,11 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
 project_name: dhis2gw
-before:
-  hooks:
-    # You may remove this if you don't use go modules.
-    - go mod tidy
-    # you may remove this if you don't need go generate
-    - go generate ./...
 builds:
-  - env:
+  - id: api
+    main: ./cmd/api
+    binary: dhis2gw
+    env:
       - CGO_ENABLED=0
     ldflags:
       - "-s -w"
@@ -17,19 +14,57 @@ builds:
       # - windows
       - darwin
     goarch:
-        - amd64
-        # - arm64
+      - amd64
+
+  - id: ibp
+    main: ./cmd/ibp
+    binary: ibp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+
+  - id: pbs-sync
+    main: ./cmd/pbs_sync
+    binary: pbs-sync
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+
+  - id: worker
+    main: ./cmd/worker
+    binary: worker
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
 archives:
-  - files:
+  - name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    builds:
+      - api
+      - ibp
+      - pbs-sync
+      - worker
+    files:
       - README.md
-      # - db/**/*.sql
       - db/**/*.*
       - docs/**/*.*
-      #- docs/static/**/*
-      #- docs/templates/**/*
-      - docs/*.json
-      - docs/*.yaml
-      - docs/*.yml
 checksum:
   name_template: 'checksums.txt'
 snapshot:
