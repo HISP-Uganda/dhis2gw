@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export CGO_ENABLED = 0
+export GOTOOLCHAIN = auto
+
+%:
+	dh $@ --with systemd
+
+override_dh_auto_build:
+	mkdir -p build
+	go build -trimpath -ldflags="-s -w" -o build/dhis2gw ./cmd/api
+	go build -trimpath -ldflags="-s -w" -o build/dhis2gw-worker ./cmd/worker
+	go build -trimpath -ldflags="-s -w" -o build/dhis2gw-pbs-sync ./cmd/pbs_sync
+	go build -trimpath -ldflags="-s -w" -o build/dhis2gw-migrate ./cmd/migrate
+
+override_dh_auto_clean:
+	rm -rf build
+
+override_dh_installsystemd:
+	dh_installsystemd --no-start --no-enable

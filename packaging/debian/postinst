@@ -1,0 +1,24 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = configure ]; then
+    if ! getent group dhis2gw >/dev/null 2>&1; then
+        addgroup --system dhis2gw
+    fi
+
+    if ! id dhis2gw >/dev/null 2>&1; then
+        adduser --system --ingroup dhis2gw --home /var/lib/dhis2gw \
+            --no-create-home --shell /usr/sbin/nologin dhis2gw
+    fi
+
+    install -d -o dhis2gw -g dhis2gw -m 0750 \
+        /var/lib/dhis2gw /var/cache/pbsync /var/log/dhis2gw
+    install -d -o root -g dhis2gw -m 0750 /etc/dhis2gw/conf.d
+    chown root:dhis2gw /etc/dhis2gw/dhis2gw.yml
+    chmod 0640 /etc/dhis2gw/dhis2gw.yml
+fi
+
+# The services intentionally remain disabled and stopped until the operator
+# has supplied database, Redis, DHIS2, and (when needed) PBS credentials.
+
+#DEBHELPER#

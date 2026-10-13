@@ -1,0 +1,10 @@
+build/dhis2gw usr/bin
+build/dhis2gw-worker usr/bin
+build/dhis2gw-pbs-sync usr/bin
+build/dhis2gw-migrate usr/bin
+packaging/dhis2gw.yml etc/dhis2gw
+docs/templates usr/share/dhis2gw/docs
+docs/static usr/share/dhis2gw/docs
+docs/md_docs usr/share/dhis2gw/docs
+db/migrations usr/share/dhis2gw/db
+debian/nginx-dhis2gw.conf etc/nginx/sites-available

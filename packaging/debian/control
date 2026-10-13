@@ -1,0 +1,16 @@
+Source: dhis2gw
+Section: net
+Priority: optional
+Maintainer: HISP Uganda <info@hispuganda.org>
+Build-Depends: debhelper-compat (= 13), golang-go, ca-certificates
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: dhis2gw
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
+Recommends: nginx
+Suggests: postgresql, redis-server
+Description: DHIS2 gateway service
+ Gateway service for accepting aggregate and tracker submissions and
+ processing them asynchronously for DHIS2 instances.

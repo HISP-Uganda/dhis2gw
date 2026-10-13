@@ -10,6 +10,7 @@ cmd/worker/worker
 
 # cross-compiled binaries
 dist/
+linux-build/
 
 # Ignore any IDE-specific files or directories
 .vscode/

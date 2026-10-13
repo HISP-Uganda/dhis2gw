@@ -1,0 +1,32 @@
+database:
+  uri: "postgres://dhis2gw:CHANGE_ME@127.0.0.1:5432/dhis2gw?sslmode=disable"
+
+server:
+  host: "127.0.0.1"
+  http_port: 9090
+  redis_address: "127.0.0.1:6379"
+  max_retries: 3
+  max_concurrent: 5
+  request_process_interval: 4
+  logdir: "/var/log/dhis2gw"
+  migrations_dir: "file:///usr/share/dhis2gw/db/migrations"
+  templates_directory: "/usr/share/dhis2gw/docs/templates"
+  docs_directory: "/usr/share/dhis2gw/docs/md_docs"
+  static_directory: "/usr/share/dhis2gw/docs/static"
+
+api:
+  dhis2_base_url: "https://CHANGE_ME/api/"
+  dhis2_user: "CHANGE_ME"
+  dhis2_password: "CHANGE_ME"
+  dhis2_pat: ""
+  dhis2_auth_method: "Basic"
+  mapping_scheme: "CODE"
+
+pbs:
+  pbsurl: "http://127.0.0.1:8080/pbs"
+  user: ""
+  password: ""
+  jwt: ""
+  cache:
+    enabled: true
+    cache_dir: "/var/cache/pbsync"

@@ -10,15 +10,12 @@ import (
 	"dhis2gw/internal/middleware"
 	"dhis2gw/internal/migrate"
 	"dhis2gw/internal/models"
-	"dhis2gw/internal/tasks"
-	"dhis2gw/internal/utils"
 	"fmt"
 	"html/template"
 	"net/http"
 	"os/signal"
 	"syscall"
 
-	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gomarkdown/markdown"
@@ -102,17 +99,10 @@ func main() {
 		_ = client.Close()
 	}(client)
 
-	dhis2Client := sdk.NewClient(
-		cfg.API.DHIS2BaseURL,
-		cfg.API.DHIS2User,
-		cfg.API.DHIS2Password)
-	tasks.SetClient(dhis2Client)
-
 	var wg sync.WaitGroup
 
-	wg.Add(2)
+	wg.Add(1)
 	go startAPIServer(ctx, &wg, cfg)
-	go startWorker(ctx, &wg, cfg)
 
 	wg.Wait()
 }
@@ -242,39 +232,5 @@ func startAPIServer(ctx context.Context, wg *sync.WaitGroup, cfg config.Config) 
 		}
 	case err := <-errCh:
 		log.Fatalf("API server error: %v", err)
-	}
-}
-
-func startWorker(ctx context.Context, wg *sync.WaitGroup, cfg config.Config) {
-	defer wg.Done()
-
-	srv := asynq.NewServer(
-		asynq.RedisClientOpt{
-			Addr: cfg.Server.RedisAddress, DB: cfg.Server.RedisDB},
-		asynq.Config{
-			Concurrency: cfg.Server.MaxConcurrent,
-
-			Queues: utils.Queues(cfg.Server.QueuePrefix),
-		},
-	)
-
-	mux := asynq.NewServeMux()
-	mux.HandleFunc(tasks.TypeAggregate, tasks.HandleAggregateTask)
-
-	// Run the worker in a goroutine and listen for shutdown
-	errCh := make(chan error, 1)
-	go func() {
-		if err := srv.Run(mux); err != nil {
-			errCh <- err
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Info("Shutdown signal received. Shutting down Asynq worker...")
-		srv.Shutdown() // No error to check in current Asynq
-		log.Info("Asynq worker shut down gracefully.")
-	case err := <-errCh:
-		log.Fatalf("Asynq worker error: %v", err)
 	}
 }
