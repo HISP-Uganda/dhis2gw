@@ -1,6 +1,6 @@
 # Linux Debian build
 
-This directory is a self-contained Debian source tree. On Ubuntu, install
+This directory is a self-contained Debian packaging tree. On Ubuntu, install
 `devscripts`, `debhelper`, `fakeroot`, and `ca-certificates`. From the
 repository root, first generate the Linux/amd64 and Linux/arm64 binaries and
 Debian source trees with:

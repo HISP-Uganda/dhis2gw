@@ -31,19 +31,9 @@ stage_architecture() {
 
 	mkdir -p "$tree"
 
-	for path in cmd db docs internal schemas; do
-		cp -a "$ROOT/$path" "$tree/"
-	done
-
-	# Do not copy ignored local binaries that may exist inside command directories.
-	rm -f "$tree/cmd/api/api" "$tree/cmd/ibp/ibp" \
-		"$tree/cmd/pbs_sync/pbs_sync" "$tree/cmd/worker/worker"
-
-	for path in go.mod go.sum README.md; do
-		cp -a "$ROOT/$path" "$tree/"
-	done
-
-	mkdir -p "$tree/packaging"
+	mkdir -p "$tree/db" "$tree/docs" "$tree/packaging"
+	cp -a "$ROOT/db/migrations" "$tree/db/"
+	cp -a "$ROOT/docs/templates" "$ROOT/docs/static" "$ROOT/docs/md_docs" "$tree/docs/"
 	cp -a "$ROOT/packaging/dhis2gw.yml" "$tree/packaging/"
 	cp -a "$ROOT/packaging/debian" "$tree/"
 	cp -a "$ROOT/packaging/linux-build-README.md" "$tree/LINUX-BUILD.md"
