@@ -5,51 +5,65 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 STAGE="$ROOT/linux-build"
 VERSION=${DHIS2GW_VERSION:-1.0.0}
 
-goreleaser release --snapshot --rm-dist
+goreleaser release --snapshot --clean
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 
-for path in cmd db docs internal schemas; do
-	cp -a "$ROOT/$path" "$STAGE/"
-done
-
-# Do not copy ignored local binaries that may exist inside command directories.
-rm -f "$STAGE/cmd/api/api" "$STAGE/cmd/ibp/ibp" \
-	"$STAGE/cmd/pbs_sync/pbs_sync" "$STAGE/cmd/worker/worker"
-
-for path in go.mod go.sum README.md; do
-	cp -a "$ROOT/$path" "$STAGE/"
-done
-
-mkdir -p "$STAGE/packaging"
-cp -a "$ROOT/packaging/dhis2gw.yml" "$STAGE/packaging/"
-cp -a "$ROOT/packaging/debian" "$STAGE/"
-cp -a "$ROOT/packaging/linux-build-README.md" "$STAGE/LINUX-BUILD.md"
-
-sed "s/@VERSION@/$VERSION/g" \
-	"$STAGE/debian/changelog.in" > "$STAGE/debian/changelog"
-rm -f "$STAGE/debian/changelog.in"
-chmod 0755 "$STAGE/debian/rules"
-
-mkdir -p "$STAGE/build"
-
 copy_release_binary() {
-	source_name=$1
-	destination_name=$2
-	source_path=$(find "$ROOT/dist" -type f -path "*_linux_amd64/$source_name" -print -quit)
+	arch=$1
+	source_name=$2
+	destination_name=$3
+	tree=$4
+	source_path=$(find "$ROOT/dist" -type f -path "*_linux_${arch}*/$source_name" -print -quit)
 
 	if [ -z "$source_path" ]; then
-		printf '%s\n' "Missing GoReleaser Linux/amd64 binary: $source_name" >&2
+		printf '%s\n' "Missing GoReleaser Linux/$arch binary: $source_name" >&2
 		exit 1
 	fi
 
-	cp -a "$source_path" "$STAGE/build/$destination_name"
+	cp -a "$source_path" "$tree/build/$destination_name"
 }
 
-copy_release_binary dhis2gw dhis2gw
-copy_release_binary worker dhis2gw-worker
-copy_release_binary pbs-sync dhis2gw-pbs-sync
-copy_release_binary migrate dhis2gw-migrate
+stage_architecture() {
+	arch=$1
+	tree="$STAGE/$arch"
 
-printf '%s\n' "Linux Debian build tree created at $STAGE (version $VERSION)"
+	mkdir -p "$tree"
+
+	for path in cmd db docs internal schemas; do
+		cp -a "$ROOT/$path" "$tree/"
+	done
+
+	# Do not copy ignored local binaries that may exist inside command directories.
+	rm -f "$tree/cmd/api/api" "$tree/cmd/ibp/ibp" \
+		"$tree/cmd/pbs_sync/pbs_sync" "$tree/cmd/worker/worker"
+
+	for path in go.mod go.sum README.md; do
+		cp -a "$ROOT/$path" "$tree/"
+	done
+
+	mkdir -p "$tree/packaging"
+	cp -a "$ROOT/packaging/dhis2gw.yml" "$tree/packaging/"
+	cp -a "$ROOT/packaging/debian" "$tree/"
+	cp -a "$ROOT/packaging/linux-build-README.md" "$tree/LINUX-BUILD.md"
+
+	sed "s/@VERSION@/$VERSION/g" \
+		"$tree/debian/changelog.in" > "$tree/debian/changelog"
+	rm -f "$tree/debian/changelog.in"
+	sed "s/^Architecture: .*/Architecture: $arch/" \
+		"$tree/debian/control" > "$tree/debian/control.tmp"
+	mv "$tree/debian/control.tmp" "$tree/debian/control"
+	chmod 0755 "$tree/debian/rules"
+
+	mkdir -p "$tree/build"
+	copy_release_binary "$arch" dhis2gw dhis2gw "$tree"
+	copy_release_binary "$arch" worker dhis2gw-worker "$tree"
+	copy_release_binary "$arch" pbs-sync dhis2gw-pbs-sync "$tree"
+	copy_release_binary "$arch" migrate dhis2gw-migrate "$tree"
+}
+
+stage_architecture amd64
+stage_architecture arm64
+
+printf '%s\n' "Linux Debian build trees created at $STAGE (version $VERSION)"

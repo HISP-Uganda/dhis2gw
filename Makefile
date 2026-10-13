@@ -1,4 +1,4 @@
-.PHONY: all clean api dhis2gw worker migrate linux-build run-server run-worker release-check release-snapshot release
+.PHONY: all clean api dhis2gw worker migrate linux-build linux-release run-server run-worker release-check release-snapshot release
 
 DHIS2GW_VERSION ?= 1.0.0
 
@@ -20,6 +20,9 @@ migrate:
 linux-build:
 	DHIS2GW_VERSION="$(DHIS2GW_VERSION)" ./scripts/linux-build.sh
 
+linux-release:
+	goreleaser release --snapshot --clean
+
 dhis2gw: api
 
 run-server: dhis2gw
@@ -32,7 +35,7 @@ release-check:
 	goreleaser check
 
 release-snapshot:
-	goreleaser release --snapshot --rm-dist
+	goreleaser release --snapshot --clean
 
 release:
-	goreleaser release --rm-dist
+	goreleaser release --clean

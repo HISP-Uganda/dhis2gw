@@ -7,7 +7,7 @@ Standards-Version: 4.6.2
 Rules-Requires-Root: no
 
 Package: dhis2gw
-Architecture: amd64
+Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
 Recommends: nginx
 Suggests: postgresql, redis-server

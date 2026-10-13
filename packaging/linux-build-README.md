@@ -2,18 +2,21 @@
 
 This directory is a self-contained Debian source tree. On Ubuntu, install
 `devscripts`, `debhelper`, `fakeroot`, and `ca-certificates`. From the
-repository root, first generate the Linux/amd64 binaries and Debian source
-tree with:
+repository root, first generate the Linux/amd64 and Linux/arm64 binaries and
+Debian source trees with:
+
+The release targets require GoReleaser 2.5.1 or newer. Verify the installed
+version with `goreleaser --version` before building.
 
 ```bash
 make linux-build
 ```
 
-The target runs GoReleaser and stages its binaries in `linux-build/build/`.
-Then enter the generated tree and run:
+The target creates two self-contained trees. Use the tree matching the Linux
+host architecture:
 
 ```bash
-cd linux-build
+cd linux-build/amd64  # use linux-build/arm64 on an arm64 host
 debuild -us -uc
 ```
 

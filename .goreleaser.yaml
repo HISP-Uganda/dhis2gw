@@ -1,5 +1,6 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
+version: 2
 project_name: dhis2gw
 builds:
   - id: api
@@ -67,6 +68,66 @@ builds:
       - darwin
     goarch:
       - amd64
+
+  - id: api-linux-arm64
+    main: ./cmd/api
+    binary: dhis2gw
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - arm64
+
+  - id: ibp-linux-arm64
+    main: ./cmd/ibp
+    binary: ibp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - arm64
+
+  - id: pbs-sync-linux-arm64
+    main: ./cmd/pbs_sync
+    binary: pbs-sync
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - arm64
+
+  - id: worker-linux-arm64
+    main: ./cmd/worker
+    binary: worker
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - arm64
+
+  - id: migrate-linux-arm64
+    main: ./cmd/migrate
+    binary: migrate
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - arm64
 archives:
   - name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     builds:
@@ -75,15 +136,17 @@ archives:
       - pbs-sync
       - worker
       - migrate
+      - api-linux-arm64
+      - ibp-linux-arm64
+      - pbs-sync-linux-arm64
+      - worker-linux-arm64
+      - migrate-linux-arm64
     files:
       - README.md
       - db/**/*.*
       - docs/**/*.*
 checksum:
   name_template: 'checksums.txt'
-snapshot:
-  # name_template: "{{ incpatch .Version }}"
-  name_template: "{{ .Version }}"
 changelog:
   sort: asc
   filters:
