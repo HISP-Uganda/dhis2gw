@@ -1,11 +1,11 @@
 package main
 
 import (
-	"dhis2gw/bootstrap"
-	"dhis2gw/config"
-	"dhis2gw/db"
-	"dhis2gw/models"
-	"dhis2gw/tasks"
+	"dhis2gw/internal/bootstrap"
+	"dhis2gw/internal/config"
+	"dhis2gw/internal/db"
+	"dhis2gw/internal/models"
+	"dhis2gw/internal/tasks"
 	"fmt"
 	sdk "github.com/HISP-Uganda/go-dhis2-sdk"
 	"github.com/hibiken/asynq"

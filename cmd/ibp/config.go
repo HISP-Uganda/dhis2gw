@@ -1,9 +1,9 @@
 package main
 
 import (
-	"dhis2gw/config"
-	"dhis2gw/models"
-	"dhis2gw/utils"
+	"dhis2gw/internal/config"
+	"dhis2gw/internal/models"
+	"dhis2gw/internal/utils"
 	_ "embed"
 	"fmt"
 	"net/http"

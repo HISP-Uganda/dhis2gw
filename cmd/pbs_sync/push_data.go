@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"dhis2gw/clients"
+	"dhis2gw/internal/clients"
 	"errors"
 	"fmt"
 	"sync"

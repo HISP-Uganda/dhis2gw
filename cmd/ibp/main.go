@@ -1,12 +1,12 @@
 package main
 
 import (
-	// "dhis2gw/clients"
-	"dhis2gw/config"
-	"dhis2gw/db"
-	"dhis2gw/middleware"
-	"dhis2gw/models"
-	"dhis2gw/utils"
+	// "dhis2gw/internal/clients"
+	"dhis2gw/internal/config"
+	"dhis2gw/internal/db"
+	"dhis2gw/internal/middleware"
+	"dhis2gw/internal/models"
+	"dhis2gw/internal/utils"
 	"fmt"
 	"net/http"
 	"time"

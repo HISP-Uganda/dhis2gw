@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
-	"dhis2gw/config"
+	"dhis2gw/internal/config"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,7 +13,7 @@ import (
 	"sort"
 	"time"
 
-	"dhis2gw/clients/pbs"
+	"dhis2gw/internal/clients/pbs"
 )
 
 type CacheMeta struct {

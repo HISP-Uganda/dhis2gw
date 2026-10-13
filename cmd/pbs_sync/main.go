@@ -3,12 +3,12 @@ package main
 
 import (
 	"context"
-	"dhis2gw/clients"
-	"dhis2gw/clients/pbs"
-	"dhis2gw/config"
-	"dhis2gw/db"
-	"dhis2gw/mappings"
-	"dhis2gw/models"
+	"dhis2gw/internal/clients"
+	"dhis2gw/internal/clients/pbs"
+	"dhis2gw/internal/config"
+	"dhis2gw/internal/db"
+	"dhis2gw/internal/mappings"
+	"dhis2gw/internal/models"
 	"errors"
 	"fmt"
 	"os"

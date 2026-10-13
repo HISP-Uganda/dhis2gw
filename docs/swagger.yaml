@@ -12,62 +12,12 @@ definitions:
         type: array
     type: object
   controllers.CSVMappingsResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/models.Dhis2Mapping'
-        type: array
-      total:
-        example: 100
-        type: integer
     type: object
   controllers.ExcelImportResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/models.Dhis2Mapping'
-        type: array
-      total:
-        example: 100
-        type: integer
     type: object
   controllers.JobLogPaginatedResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/joblog.JobLogSwagger'
-        type: array
-      page:
-        example: 1
-        type: integer
-      page_size:
-        example: 10
-        type: integer
-      total:
-        example: 100
-        type: integer
-      total_pages:
-        example: 10
-        type: integer
     type: object
   controllers.PaginatedUserResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/models.User'
-        type: array
-      page:
-        example: 1
-        type: integer
-      page_size:
-        example: 10
-        type: integer
-      total:
-        example: 100
-        type: integer
-      total_pages:
-        example: 10
-        type: integer
     type: object
   joblog.JobLogSwagger:
     properties:
@@ -151,6 +101,10 @@ definitions:
     type: object
   models.Dhis2Mapping:
     properties:
+      categoryCombo:
+        type: string
+      categoryOption:
+        type: string
       categoryOptionCombo:
         type: string
       code:
@@ -163,15 +117,25 @@ definitions:
         type: string
       description:
         type: string
-      dhis2Name:
+      destinationOrgUnit:
+        type: string
+      dimensionType:
         type: string
       id:
         type: integer
+      instanceName:
+        type: string
       name:
+        type: string
+      sourceName:
+        type: string
+      sourceOrgUnit:
         type: string
       uid:
         type: string
       updated:
+        type: string
+      what:
         type: string
     type: object
   models.ErrorResponse:
@@ -209,33 +173,6 @@ definitions:
         type: string
       username:
         example: jdoe
-        type: string
-    type: object
-  models.User:
-    properties:
-      created:
-        type: string
-      email:
-        type: string
-      firstname:
-        type: string
-      id:
-        type: integer
-      is_active:
-        type: boolean
-      is_admin_user:
-        type: boolean
-      lastname:
-        type: string
-      password:
-        type: string
-      telephone:
-        type: string
-      uid:
-        type: string
-      updated:
-        type: string
-      username:
         type: string
     type: object
   models.UserCreateResponse:
@@ -613,6 +550,46 @@ paths:
       - BasicAuth: []
       - TokenAuth: []
       summary: Get mappings
+      tags:
+      - mappings
+  /mappings/export/excel:
+    get:
+      description: Exports DHIS2 mappings to an Excel file
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel file containing DHIS2 mappings
+          schema:
+            type: file
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Export DHIS2 mappings to Excel
+      tags:
+      - mappings
+  /mappings/export/excel-template:
+    get:
+      description: Provides an Excel template for DHIS2 mappings
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel template file
+          schema:
+            type: file
+        "500":
+          description: Server-side error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BasicAuth: []
+      - TokenAuth: []
+      summary: Export Excel template for DHIS2 mappings
       tags:
       - mappings
   /mappings/import/csv:

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"dhis2gw/models"
-	"dhis2gw/utils"
+	"dhis2gw/internal/models"
+	"dhis2gw/internal/utils"
 	"errors"
 	"fmt"
 	"regexp"

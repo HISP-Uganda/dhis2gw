@@ -523,6 +523,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/mappings/export/excel": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Exports DHIS2 mappings to an Excel file",
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "mappings"
+                ],
+                "summary": "Export DHIS2 mappings to Excel",
+                "responses": {
+                    "200": {
+                        "description": "Excel file containing DHIS2 mappings",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/mappings/export/excel-template": {
+            "get": {
+                "security": [
+                    {
+                        "BasicAuth": []
+                    },
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "description": "Provides an Excel template for DHIS2 mappings",
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "mappings"
+                ],
+                "summary": "Export Excel template for DHIS2 mappings",
+                "responses": {
+                    "200": {
+                        "description": "Excel template file",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "500": {
+                        "description": "Server-side error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/mappings/import/csv": {
             "post": {
                 "security": [
@@ -927,88 +995,16 @@ const docTemplate = `{
             }
         },
         "controllers.CSVMappingsResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Dhis2Mapping"
-                    }
-                },
-                "total": {
-                    "type": "integer",
-                    "example": 100
-                }
-            }
+            "type": "object"
         },
         "controllers.ExcelImportResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.Dhis2Mapping"
-                    }
-                },
-                "total": {
-                    "type": "integer",
-                    "example": 100
-                }
-            }
+            "type": "object"
         },
         "controllers.JobLogPaginatedResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/joblog.JobLogSwagger"
-                    }
-                },
-                "page": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "page_size": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "total": {
-                    "type": "integer",
-                    "example": 100
-                },
-                "total_pages": {
-                    "type": "integer",
-                    "example": 10
-                }
-            }
+            "type": "object"
         },
         "controllers.PaginatedUserResponse": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.User"
-                    }
-                },
-                "page": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "page_size": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "total": {
-                    "type": "integer",
-                    "example": 100
-                },
-                "total_pages": {
-                    "type": "integer",
-                    "example": 10
-                }
-            }
+            "type": "object"
         },
         "joblog.JobLogSwagger": {
             "type": "object",
@@ -1125,6 +1121,12 @@ const docTemplate = `{
         "models.Dhis2Mapping": {
             "type": "object",
             "properties": {
+                "categoryCombo": {
+                    "type": "string"
+                },
+                "categoryOption": {
+                    "type": "string"
+                },
                 "categoryOptionCombo": {
                     "type": "string"
                 },
@@ -1143,19 +1145,34 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
-                "dhis2Name": {
+                "destinationOrgUnit": {
+                    "type": "string"
+                },
+                "dimensionType": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
+                "instanceName": {
+                    "type": "string"
+                },
                 "name": {
+                    "type": "string"
+                },
+                "sourceName": {
+                    "type": "string"
+                },
+                "sourceOrgUnit": {
                     "type": "string"
                 },
                 "uid": {
                     "type": "string"
                 },
                 "updated": {
+                    "type": "string"
+                },
+                "what": {
                     "type": "string"
                 }
             }
@@ -1210,47 +1227,6 @@ const docTemplate = `{
                 "username": {
                     "type": "string",
                     "example": "jdoe"
-                }
-            }
-        },
-        "models.User": {
-            "type": "object",
-            "properties": {
-                "created": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "firstname": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "is_admin_user": {
-                    "type": "boolean"
-                },
-                "lastname": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "telephone": {
-                    "type": "string"
-                },
-                "uid": {
-                    "type": "string"
-                },
-                "updated": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
                 }
             }
         },
