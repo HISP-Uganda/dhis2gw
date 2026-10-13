@@ -2,12 +2,12 @@ Source: dhis2gw
 Section: net
 Priority: optional
 Maintainer: HISP Uganda <info@hispuganda.org>
-Build-Depends: debhelper-compat (= 13), golang-go, ca-certificates
+Build-Depends: debhelper-compat (= 13), ca-certificates
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
 
 Package: dhis2gw
-Architecture: any
+Architecture: amd64
 Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
 Recommends: nginx
 Suggests: postgresql, redis-server

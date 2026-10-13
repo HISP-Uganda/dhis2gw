@@ -54,6 +54,19 @@ builds:
       - darwin
     goarch:
       - amd64
+
+  - id: migrate
+    main: ./cmd/migrate
+    binary: migrate
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
 archives:
   - name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     builds:
@@ -61,6 +74,7 @@ archives:
       - ibp
       - pbs-sync
       - worker
+      - migrate
     files:
       - README.md
       - db/**/*.*

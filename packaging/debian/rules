@@ -2,17 +2,13 @@
 
 export DH_VERBOSE = 1
 export CGO_ENABLED = 0
-export GOTOOLCHAIN = auto
-
 %:
 	dh $@ --with systemd
 
 override_dh_auto_build:
-	mkdir -p build
-	go build -trimpath -ldflags="-s -w" -o build/dhis2gw ./cmd/api
-	go build -trimpath -ldflags="-s -w" -o build/dhis2gw-worker ./cmd/worker
-	go build -trimpath -ldflags="-s -w" -o build/dhis2gw-pbs-sync ./cmd/pbs_sync
-	go build -trimpath -ldflags="-s -w" -o build/dhis2gw-migrate ./cmd/migrate
+	for binary in build/dhis2gw build/dhis2gw-worker build/dhis2gw-pbs-sync build/dhis2gw-migrate; do \
+		test -x "$$binary" || { echo "missing executable: $$binary" >&2; exit 1; }; \
+	done
 
 override_dh_auto_clean:
 	rm -rf build
