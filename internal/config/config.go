@@ -253,7 +253,14 @@ type Config struct {
 		// Sync settings
 		CategoryOptionCombos       map[string]DHIS2CategoryOptionCombo `mapstructure:"category_option_combos" env:"PBS_CATEGORY_OPTION_COMBOS" env-description:"The default PBS to DHIS2 Category Option Combos mappings"`
 		DefaultCategoryOptionCombo string                              `mapstructure:"default_category_option_combo" env:"PBS_DEFAULT_CATEGORY_OPTION_COMBO" env-description:"The default PBS to DHIS2 Category Option Combo to use if no mapping is found" env-default:""`
-		Sync                       struct {
+		Middleware                 struct {
+			URL                  string `mapstructure:"url" env:"PBS_MIDDLEWARE_URL" env-description:"SukumadPro external request URL"`
+			APIToken             string `mapstructure:"api_token" env:"PBS_MIDDLEWARE_API_TOKEN" env-description:"SukumadPro API token"`
+			SourceSystem         string `mapstructure:"source_system" env:"PBS_MIDDLEWARE_SOURCE_SYSTEM" env-default:"pbs"`
+			DestinationServerUID string `mapstructure:"destination_server_uid" env:"PBS_MIDDLEWARE_DESTINATION_SERVER_UID"`
+			URLSuffix            string `mapstructure:"url_suffix" env:"PBS_MIDDLEWARE_URL_SUFFIX"`
+		} `mapstructure:"middleware"`
+		Sync struct {
 			Once     bool          `mapstructure:"once" env:"PBSSYNC_ONCE" env-description:"Whether to run the PBS sync once and exit" env-default:"false"`
 			Interval time.Duration `mapstructure:"interval" env:"PBSSYNC_INTERVAL" env-description:"The interval to run the PBS sync" env-default:"1h"`
 			Window   time.Duration `mapstructure:"window" env:"PBSSYNC_WINDOW" env-description:"The window to fetch data from PBS" env-default:"24h"`

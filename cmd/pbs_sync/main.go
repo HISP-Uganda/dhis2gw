@@ -217,11 +217,11 @@ func fetchOutturns(ctx context.Context, cfg config.Config, client *pbs.Client, f
 			}
 			batch := dvs[i:end]
 
-			if err := clients.PushDataValues(batch); err != nil {
+			if err := submitMiddlewareRequest(ctx, map[string][]schema.DataValue{"dataValues": batch}); err != nil {
 				log.Errorf("pbs-sync: push data values error: %v", err)
 				continue
 			}
-			log.Infof("pbs-sync: pushed %d data values to DHIS2", len(batch))
+			log.Infof("pbs-sync: submitted %d data values through SukumadPro", len(batch))
 		}
 
 	}

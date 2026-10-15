@@ -55,6 +55,11 @@ The tool relies on the global application configuration. Key PBS settings includ
 | `pbs.cache.ttl` | `PBSSYNC_CACHE_TTL` | Cache TTL duration. `0` means entries never expire. |
 | `pbs.cache.endpoint` | `PBSSYNC_CACHE_ENDPOINT` | Optional endpoint tag included in cache keys. |
 | `pbs.cache.schema_tag` | `PBSSYNC_CACHE_SCHEMA_TAG` | Optional schema tag included in cache keys. |
+| `pbs.middleware.url` | `PBS_MIDDLEWARE_URL` | SukumadPro external request URL. |
+| `pbs.middleware.api_token` | `PBS_MIDDLEWARE_API_TOKEN` | SukumadPro API token. |
+| `pbs.middleware.source_system` | `PBS_MIDDLEWARE_SOURCE_SYSTEM` | Source system identifier, normally `pbs`. |
+| `pbs.middleware.destination_server_uid` | `PBS_MIDDLEWARE_DESTINATION_SERVER_UID` | SukumadPro destination server UID. |
+| `pbs.middleware.url_suffix` | `PBS_MIDDLEWARE_URL_SUFFIX` | Destination request path, such as `/api/dataValues`. |
 
 #### PBS-Specific Notes
 
@@ -76,6 +81,13 @@ pbs:
   fiscal_year: "2024-2025"
   instance_name: pbs
   default_category_option_combo: "<dhis2-coc-uid>"
+
+  middleware:
+    url: http://127.0.0.1:8080/api/v1/external/requests
+    api_token: "<API_TOKEN>"
+    source_system: pbs
+    destination_server_uid: srv-primary
+    url_suffix: /api/dataValues
 
   category_option_combos:
     approved:

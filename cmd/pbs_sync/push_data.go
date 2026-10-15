@@ -2,13 +2,20 @@ package main
 
 import (
 	"context"
-	"dhis2gw/internal/clients"
+	"crypto/rand"
+	"crypto/sha256"
+	"dhis2gw/internal/config"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/HISP-Uganda/go-dhis2-sdk/dhis2/schema"
-	"github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,10 +35,6 @@ func SendDataValue(context context.Context, dataValue ExtendedDataValue) error {
 	if dataValue.CategoryCombo == nil {
 		return errors.New("CategoryCombo cannot be nil")
 	}
-	client := clients.GetDhis2Client()
-	if client == nil || client.RestClient == nil {
-		return errors.New("DHIS2 client is not initialized")
-	}
 	params := map[string]string{
 		"de": *dataValue.DataElement,
 		"pe": *dataValue.Period,
@@ -48,29 +51,93 @@ func SendDataValue(context context.Context, dataValue ExtendedDataValue) error {
 		encoded, _ := EncodeComment(*dataValue.Comment, []string{})
 		params["comment"] = encoded
 	}
-	log.Infof("Sending data value to DHIS2: %v", params)
+	log.Infof("Sending data value through SukumadPro: %v", params)
+	return submitMiddlewareRequest(context, params)
+}
 
-	resp, err := client.PostResource(
-		"/dataValues", nil,
-		clients.WithQuery(params),
-		clients.WithContext(context),
-	)
+type middlewareRequest struct {
+	SourceSystem         string `json:"sourceSystem"`
+	DestinationServerUID string `json:"destinationServerUid"`
+	CorrelationID        string `json:"correlationId"`
+	IdempotencyKey       string `json:"idempotencyKey"`
+	PayloadFormat        string `json:"payloadFormat"`
+	SubmissionBinding    string `json:"submissionBinding"`
+	URLSuffix            string `json:"urlSuffix"`
+	Payload              any    `json:"payload"`
+}
+
+func submitMiddlewareRequest(ctx context.Context, payload any) error {
+	cfg := config.MustGet().Config.PBS.Middleware
+	if strings.TrimSpace(cfg.URL) == "" {
+		return errors.New("PBS middleware URL is not configured")
+	}
+	if strings.TrimSpace(cfg.APIToken) == "" {
+		return errors.New("PBS middleware API token is not configured")
+	}
+	if strings.TrimSpace(cfg.SourceSystem) == "" {
+		return errors.New("PBS middleware source system is not configured")
+	}
+	if strings.TrimSpace(cfg.DestinationServerUID) == "" {
+		return errors.New("PBS middleware destination server UID is not configured")
+	}
+	if strings.TrimSpace(cfg.URLSuffix) == "" {
+		return errors.New("PBS middleware URL suffix is not configured")
+	}
+
+	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("failed to send data value to DHIS2: %w", err)
+		return fmt.Errorf("marshal middleware payload: %w", err)
 	}
-
-	if resp == nil {
-		return errors.New("nil response from DHIS2")
+	hashInput := struct {
+		SourceSystem         string          `json:"sourceSystem"`
+		DestinationServerUID string          `json:"destinationServerUid"`
+		URLSuffix            string          `json:"urlSuffix"`
+		Payload              json.RawMessage `json:"payload"`
+	}{cfg.SourceSystem, cfg.DestinationServerUID, cfg.URLSuffix, payloadJSON}
+	hashJSON, err := json.Marshal(hashInput)
+	if err != nil {
+		return fmt.Errorf("marshal middleware idempotency input: %w", err)
 	}
-
-	if resp.IsError() {
-		return fmt.Errorf(
-			"DHIS2 returned error: status=%d body=%s",
-			resp.StatusCode(),
-			resp.String(),
-		)
+	hash := sha256.Sum256(hashJSON)
+	correlationID, err := newCorrelationID()
+	if err != nil {
+		return fmt.Errorf("generate middleware correlation ID: %w", err)
+	}
+	body := middlewareRequest{
+		SourceSystem: cfg.SourceSystem, DestinationServerUID: cfg.DestinationServerUID,
+		CorrelationID: correlationID, IdempotencyKey: "pbs-sync-" + hex.EncodeToString(hash[:]),
+		PayloadFormat: "json", SubmissionBinding: "query", URLSuffix: cfg.URLSuffix, Payload: payload,
+	}
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal middleware request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, cfg.URL, strings.NewReader(string(bodyJSON)))
+	if err != nil {
+		return fmt.Errorf("create middleware request: %w", err)
+	}
+	req.Header.Set("X-API-Token", cfg.APIToken)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		return fmt.Errorf("submit request to SukumadPro: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		responseBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+		return fmt.Errorf("SukumadPro returned error: status=%d body=%s", resp.StatusCode, responseBody)
 	}
 	return nil
+}
+
+func newCorrelationID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	b[6] = (b[6] & 0x0f) | 0x40
+	b[8] = (b[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%s-%s-%s-%s-%s", hex.EncodeToString(b[0:4]), hex.EncodeToString(b[4:6]), hex.EncodeToString(b[6:8]), hex.EncodeToString(b[8:10]), hex.EncodeToString(b[10:16])), nil
 }
 
 func EncodeComment(explanation string, attachments []string) (string, error) {
@@ -90,14 +157,9 @@ func PushIndividualDataValues(ctx context.Context, dataValues []ExtendedDataValu
 	if len(dataValues) == 0 {
 		return nil
 	}
-	client := clients.GetDhis2Client()
-	if client == nil || client.RestClient == nil {
-		return errors.New("DHIS2 client is not initialized")
-	}
-
 	err := SendWithWorkers(ctx, dataValues, 5, SendDataValue)
 	if err != nil {
-		log.WithError(err).Error("SendWithWorkers: Failed to send data value to DHIS2")
+		log.WithError(err).Error("SendWithWorkers: failed to submit data value through SukumadPro")
 		return err
 	}
 
