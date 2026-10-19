@@ -56,15 +56,18 @@ func SendDataValue(context context.Context, dataValue ExtendedDataValue) error {
 }
 
 type middlewareRequest struct {
-	SourceSystem         string `json:"sourceSystem"`
-	DestinationServerUID string `json:"destinationServerUid"`
-	CorrelationID        string `json:"correlationId"`
-	IdempotencyKey       string `json:"idempotencyKey"`
-	PayloadFormat        string `json:"payloadFormat"`
-	SubmissionBinding    string `json:"submissionBinding"`
-	URLSuffix            string `json:"urlSuffix"`
-	Payload              any    `json:"payload"`
+	SourceSystem            string `json:"sourceSystem"`
+	DestinationServerUID    string `json:"destinationServerUid"`
+	CorrelationID           string `json:"correlationId"`
+	IdempotencyKey          string `json:"idempotencyKey"`
+	PayloadFormat           string `json:"payloadFormat"`
+	SubmissionBinding       string `json:"submissionBinding"`
+	ResponseBodyPersistence string `json:"responseBodyPersistence"`
+	URLSuffix               string `json:"urlSuffix"`
+	Payload                 any    `json:"payload"`
 }
+
+const defaultResponseBodyPersistence = "save"
 
 func submitMiddlewareRequest(ctx context.Context, payload any) error {
 	cfg := config.MustGet().Config.PBS.Middleware
@@ -106,7 +109,7 @@ func submitMiddlewareRequest(ctx context.Context, payload any) error {
 	body := middlewareRequest{
 		SourceSystem: cfg.SourceSystem, DestinationServerUID: cfg.DestinationServerUID,
 		CorrelationID: correlationID, IdempotencyKey: "pbs-sync-" + hex.EncodeToString(hash[:]),
-		PayloadFormat: "json", SubmissionBinding: "query", URLSuffix: cfg.URLSuffix, Payload: payload,
+		PayloadFormat: "json", SubmissionBinding: "query", ResponseBodyPersistence: defaultResponseBodyPersistence, URLSuffix: cfg.URLSuffix, Payload: payload,
 	}
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
