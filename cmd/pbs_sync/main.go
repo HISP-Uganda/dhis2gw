@@ -620,20 +620,7 @@ func appendDV[T float64 | string](
 	}
 
 	if comment != "" {
-		commentDv := ExtendedDataValue{
-			DataValue: schema.DataValue{
-				DataElement:          &deMapping.DataElement,
-				AttributeOptionCombo: &coc.UID,
-				CategoryOptionCombo:  &coc.UID,
-				Period:               &period,
-				OrgUnit:              &ouMapping,
-				Comment:              &comment,
-			},
-			CategoryCombo:  &coc.Combo,
-			CategoryOption: &coc.Option,
-		}
-		*dvs = append(*dvs, commentDv)
-		// dv.Comment = &comment
+		dv.Comment = &comment
 	}
 	*dvs = append(*dvs, dv)
 }

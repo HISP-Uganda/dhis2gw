@@ -6,6 +6,7 @@ cmd/ibp/ibp
 cmd/pbs_sync/pbs_sync
 cmd/worker/dhis2gw-worker
 cmd/worker/worker
+dhis2gw-pbs-sync
 
 # cross-compiled binaries
 dist/
