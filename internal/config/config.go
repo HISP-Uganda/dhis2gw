@@ -242,14 +242,15 @@ type Config struct {
 	} `yaml:"api"`
 
 	PBS struct {
-		PBSURL       string `mapstructure:"pbsurl" env:"PBS_URL" env-description:"The PBS URL to sync from" env-default:"http://localhost:8080/pbs"`
-		User         string `mapstructure:"user" env:"PBS_USER" env-description:"The user to use for PBS sync" env-default:"admin"`
-		Password     string `mapstructure:"password" env:"PBS_PASSWORD" env-description:"The password to use for PBS sync" env-default:"district"`
-		IPAddress    string `mapstructure:"ipaddress" env:"PBS_IPADDRESS" env-description:"The IP address to use for PBS sync" env-default:"`
-		JWT          string `mapstructure:"jwt" env:"PBS_JWT" env-description:"The JWT token to use for PBS sync" env-default:""`
-		VoteCode     string `mapstructure:"vote_code" env:"PBS_VOTE_CODE" env-description:"The Vote code to fetch outturns for" env-default:""`
-		FiscalYear   string `mapstructure:"fiscal_year" env:"PBS_FISCAL_YEAR" env-description:"The Fiscal year to fetch outturns for" env-default:"2023"`
-		InstanceName string `mapstructure:"instance_name"`
+		PBSURL            string `mapstructure:"pbsurl" env:"PBS_URL" env-description:"The PBS URL to sync from" env-default:"http://localhost:8080/pbs"`
+		User              string `mapstructure:"user" env:"PBS_USER" env-description:"The user to use for PBS sync" env-default:"admin"`
+		Password          string `mapstructure:"password" env:"PBS_PASSWORD" env-description:"The password to use for PBS sync" env-default:"district"`
+		IPAddress         string `mapstructure:"ipaddress" env:"PBS_IPADDRESS" env-description:"The IP address to use for PBS sync" env-default:"`
+		JWT               string `mapstructure:"jwt" env:"PBS_JWT" env-description:"The JWT token to use for PBS sync" env-default:""`
+		VoteCode          string `mapstructure:"vote_code" env:"PBS_VOTE_CODE" env-description:"The Vote code to fetch outturns for" env-default:""`
+		FiscalYear        string `mapstructure:"fiscal_year" env:"PBS_FISCAL_YEAR" env-description:"The Fiscal year to fetch outturns for" env-default:"2023"`
+		InstanceName      string `mapstructure:"instance_name"`
+		SendAnnualTargets bool   `mapstructure:"send_annual_targets" env:"PBS_SEND_ANNUAL_TARGETS" env-description:"Whether to send annual targets to DHIS2" env-default:"true"`
 		// Sync settings
 		CategoryOptionCombos       map[string]DHIS2CategoryOptionCombo `mapstructure:"category_option_combos" env:"PBS_CATEGORY_OPTION_COMBOS" env-description:"The default PBS to DHIS2 Category Option Combos mappings"`
 		DefaultCategoryOptionCombo string                              `mapstructure:"default_category_option_combo" env:"PBS_DEFAULT_CATEGORY_OPTION_COMBO" env-description:"The default PBS to DHIS2 Category Option Combo to use if no mapping is found" env-default:""`
@@ -463,7 +464,8 @@ func defaultPaths() (configFilePath, configDir, confDDir string, err error) {
 func applyDefaults(cfg *Config) {
 	cfg.API.AggregateMappingScheme = "CODE"
 	cfg.PBS.Sync.Window = 15 * time.Minute
-	cfg.PBS.Sync.Interval = 1 * time.Minute
+	cfg.PBS.Sync.Interval = 1 * time.Hour
+	cfg.PBS.SendAnnualTargets = false
 	cfg.PBS.Sync.PageSize = 200
 	cfg.PBS.DefaultCategoryOptionCombo = "HllvX50cXC0"
 	cfg.PBS.CategoryOptionCombos = map[string]DHIS2CategoryOptionCombo{

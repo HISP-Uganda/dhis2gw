@@ -31,7 +31,7 @@ type Comment struct {
 	Attachment  []string `json:"attachment"`
 }
 
-func SendDataValue(context context.Context, dataValue ExtendedDataValue) error {
+func SendDataValue(context context.Context, dataValue ExtendedDataValue, metadata map[string]any) error {
 	if dataValue.CategoryCombo == nil {
 		return errors.New("CategoryCombo cannot be nil")
 	}
@@ -46,30 +46,41 @@ func SendDataValue(context context.Context, dataValue ExtendedDataValue) error {
 	}
 	if dataValue.Value != nil && *dataValue.Value != "" {
 		params["value"] = *dataValue.Value
+	} else {
+		return errors.New("Value cannot be nil or empty")
 	}
 	if dataValue.Comment != nil && *dataValue.Comment != "" {
 		encoded, _ := EncodeComment(*dataValue.Comment, []string{})
 		params["comment"] = encoded
 	}
 	log.Infof("Sending data value through SukumadPro: %v", params)
-	return submitMiddlewareRequest(context, params)
+	return submitMiddlewareRequest(context, params, metadata)
 }
 
 type middlewareRequest struct {
-	SourceSystem            string `json:"sourceSystem"`
-	DestinationServerUID    string `json:"destinationServerUid"`
-	CorrelationID           string `json:"correlationId"`
-	IdempotencyKey          string `json:"idempotencyKey"`
-	PayloadFormat           string `json:"payloadFormat"`
-	SubmissionBinding       string `json:"submissionBinding"`
-	ResponseBodyPersistence string `json:"responseBodyPersistence"`
-	URLSuffix               string `json:"urlSuffix"`
-	Payload                 any    `json:"payload"`
+	SourceSystem            string         `json:"sourceSystem"`
+	DestinationServerUID    string         `json:"destinationServerUid"`
+	CorrelationID           string         `json:"correlationId"`
+	IdempotencyKey          string         `json:"idempotencyKey"`
+	PayloadFormat           string         `json:"payloadFormat"`
+	SubmissionBinding       string         `json:"submissionBinding"`
+	ResponseBodyPersistence string         `json:"responseBodyPersistence"`
+	URLSuffix               string         `json:"urlSuffix"`
+	Metadata                map[string]any `json:"metadata,omitempty"`
+	Payload                 any            `json:"payload"`
 }
 
 const defaultResponseBodyPersistence = "save"
 
-func submitMiddlewareRequest(ctx context.Context, payload any) error {
+func metadataForDataSet(dataSet string) map[string]any {
+	dataSet = strings.TrimSpace(dataSet)
+	if dataSet == "" {
+		return nil
+	}
+	return map[string]any{"dataSet": dataSet}
+}
+
+func submitMiddlewareRequest(ctx context.Context, payload any, metadata map[string]any) error {
 	cfg := config.MustGet().Config.PBS.Middleware
 	if strings.TrimSpace(cfg.URL) == "" {
 		return errors.New("PBS middleware URL is not configured")
@@ -95,8 +106,9 @@ func submitMiddlewareRequest(ctx context.Context, payload any) error {
 		SourceSystem         string          `json:"sourceSystem"`
 		DestinationServerUID string          `json:"destinationServerUid"`
 		URLSuffix            string          `json:"urlSuffix"`
+		Metadata             map[string]any  `json:"metadata,omitempty"`
 		Payload              json.RawMessage `json:"payload"`
-	}{cfg.SourceSystem, cfg.DestinationServerUID, cfg.URLSuffix, payloadJSON}
+	}{cfg.SourceSystem, cfg.DestinationServerUID, cfg.URLSuffix, metadata, payloadJSON}
 	hashJSON, err := json.Marshal(hashInput)
 	if err != nil {
 		return fmt.Errorf("marshal middleware idempotency input: %w", err)
@@ -109,7 +121,7 @@ func submitMiddlewareRequest(ctx context.Context, payload any) error {
 	body := middlewareRequest{
 		SourceSystem: cfg.SourceSystem, DestinationServerUID: cfg.DestinationServerUID,
 		CorrelationID: correlationID, IdempotencyKey: "pbs-sync-" + hex.EncodeToString(hash[:]),
-		PayloadFormat: "json", SubmissionBinding: "query", ResponseBodyPersistence: defaultResponseBodyPersistence, URLSuffix: cfg.URLSuffix, Payload: payload,
+		PayloadFormat: "json", SubmissionBinding: "query", ResponseBodyPersistence: defaultResponseBodyPersistence, URLSuffix: cfg.URLSuffix, Metadata: metadata, Payload: payload,
 	}
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
@@ -156,11 +168,13 @@ func EncodeComment(explanation string, attachments []string) (string, error) {
 	return string(j), nil
 }
 
-func PushIndividualDataValues(ctx context.Context, dataValues []ExtendedDataValue) error {
+func PushIndividualDataValues(ctx context.Context, dataValues []ExtendedDataValue, metadata map[string]any) error {
 	if len(dataValues) == 0 {
 		return nil
 	}
-	err := SendWithWorkers(ctx, dataValues, 5, SendDataValue)
+	err := SendWithWorkers(ctx, dataValues, 5, func(ctx context.Context, dataValue ExtendedDataValue) error {
+		return SendDataValue(ctx, dataValue, metadata)
+	})
 	if err != nil {
 		log.WithError(err).Error("SendWithWorkers: failed to submit data value through SukumadPro")
 		return err

@@ -138,6 +138,7 @@ func run() error {
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
+	log.Println("pbs-sync: starting sync loop with interval", interval)
 
 	for {
 		select {
@@ -145,7 +146,7 @@ func run() error {
 			return context.Canceled
 		case <-ticker.C:
 		}
-
+		log.Println("pbs-sync: fetching piap indicator projections...")
 		runCtx, cancelRun := context.WithTimeout(rootCtx, 10*time.Minute)
 		err := fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy)
 		cancelRun()
@@ -188,7 +189,7 @@ func fetchOutturns(ctx context.Context, cfg config.Config, client *pbs.Client, f
 	for _, row := range resp.CgBudgetOutturnByFiscalYear {
 		log.Infof("VoteCode=%s Vote=%s FY=%s Prog=%s Approved=%.2f Q1Exp=%.2f",
 			row.Vote_Code, row.Vote_Name, row.Fiscal_Year, row.Programme_Name, row.ApprovedBudget, row.Q1Expenditure)
-		dvs, dvsError := BuildPBSDataValues2(row, &cfg)
+		dvs, metadata, dvsError := BuildPBSDataValues2(row, &cfg)
 		if dvsError != nil {
 			// log.Warnf("pbs-sync: WARN 001: build data values error: %v", dvsError)
 			continue
@@ -211,13 +212,10 @@ func fetchOutturns(ctx context.Context, cfg config.Config, client *pbs.Client, f
 		// Push to DHIS2 in batches of 200
 		batchSize := 5
 		for i := 0; i < len(dvs); i += batchSize {
-			end := i + batchSize
-			if end > len(dvs) {
-				end = len(dvs)
-			}
+			end := min(i+batchSize, len(dvs))
 			batch := dvs[i:end]
 
-			if err := submitMiddlewareRequest(ctx, map[string][]schema.DataValue{"dataValues": batch}); err != nil {
+			if err := submitMiddlewareRequest(ctx, map[string][]schema.DataValue{"dataValues": batch}, metadata); err != nil {
 				log.Errorf("pbs-sync: push data values error: %v", err)
 				continue
 			}
@@ -230,10 +228,7 @@ func fetchOutturns(ctx context.Context, cfg config.Config, client *pbs.Client, f
 
 func ForEachBatch[T any](slice []T, batchSize int, callback func(batch []T) error) error {
 	for i := 0; i < len(slice); i += batchSize {
-		end := i + batchSize
-		if end > len(slice) {
-			end = len(slice)
-		}
+		end := min(i+batchSize, len(slice))
 		batch := slice[i:end]
 		err := callback(batch)
 		if err != nil {
@@ -265,7 +260,7 @@ func fetchPiapIndicatorProjectionsByFiscalYear(
 			return err
 		}
 		// log.WithFields(log.Fields{"PiapIndicatortProjection": row}).Info("pbs-sync: piap indicator projection")
-		dvs, err2 := BuildPiapIndicatorProjectionsDataValues(row, &cfg, mappingsCache)
+		dvs, metadata, err2 := BuildPiapIndicatorProjectionsDataValues(row, &cfg, mappingsCache)
 		if err2 != nil {
 			log.Warnf("pbs-sync: failed to build data values for piap indicator projection: %v", err2)
 			continue
@@ -291,7 +286,7 @@ func fetchPiapIndicatorProjectionsByFiscalYear(
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			if err := PushIndividualDataValues(ctx, batch); err != nil {
+			if err := PushIndividualDataValues(ctx, batch, metadata); err != nil {
 				if errors.Is(err, context.Canceled) {
 					return err
 				}
@@ -387,18 +382,18 @@ func BuildPBSDataValues(
 func BuildPBSDataValues2(
 	row pbs.CgBudgetOutturnsByFiscalYearCgBudgetOutturnByFiscalYearOpmCgBudgetOutturnDto,
 	cfg *config.Config,
-) ([]schema.DataValue, error) {
+) ([]schema.DataValue, map[string]any, error) {
 	var dvs []schema.DataValue
 
 	ouMapping, err := models.GetOrgUnitMapping(row.Vote_Code, cfg.PBS.InstanceName)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"no org unit mapping for Vote Code: %s, Vote Name: %s", row.Vote_Code, row.Vote_Name)
 	}
 
 	deMapping, err := models.GetDataElementMapping(row.Item_Code, cfg.PBS.InstanceName)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"no data element mapping for Item Code: %s, Item Name: %s", row.Item_Code, row.Item_Description)
 	}
 
@@ -452,7 +447,7 @@ func BuildPBSDataValues2(
 		appendDV("approved", period, row.ApprovedBudget)
 	}
 
-	return dvs, nil
+	return dvs, metadataForDataSet(deMapping.DataSet), nil
 }
 
 type ProjectionsDTO = pbs.CgPiapIndicatorProjectionsByFiscalYearCgPiapIndicatorProjectionsByFiscalYearOpmCgPiapIndicatorProjectionsDto
@@ -461,11 +456,11 @@ func BuildPiapIndicatorProjectionsDataValues(
 	row ProjectionsDTO,
 	cfg *config.Config,
 	mappingsCache *mappings.MappingCache,
-) ([]ExtendedDataValue, error) {
+) ([]ExtendedDataValue, map[string]any, error) {
 	var dvs []ExtendedDataValue
 	ouMapping, err := models.GetOrgUnitMapping(row.Vote_Code, cfg.PBS.InstanceName)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return nil, nil, fmt.Errorf(
 			"no org unit mapping for Vote Code: %s, Vote Name: %s for source_name: %s",
 			row.Vote_Code, row.Vote_Name, cfg.PBS.InstanceName)
 	}
@@ -473,7 +468,7 @@ func BuildPiapIndicatorProjectionsDataValues(
 	deMapping, ok := mappingsCache.Get(row.PIAP_Output_Indicator_Code)
 	if !ok {
 		log.Warnf("missing mapping for code %s", row.PIAP_Output_Indicator_Code)
-		return nil, fmt.Errorf("missing mapping for code %s", row.PIAP_Output_Indicator_Code)
+		return nil, nil, fmt.Errorf("missing mapping for code %s", row.PIAP_Output_Indicator_Code)
 	}
 
 	// Helper to get combo UID with default fallback
@@ -510,20 +505,23 @@ func BuildPiapIndicatorProjectionsDataValues(
 	}
 
 	// Approved Budget (annual, July period of first FY year)
-	if row.Target_Y1 != "" {
-		// targetY1, err := strconv.ParseFloat(row.Target_Y1, 64)
-		//if err != nil {
-		//	return nil, err
-		//}
-		//if targetY1 != 0 {
-		year := strings.Split(row.Fiscal_Year, "-")[0]
-		period := strings.TrimSpace(fmt.Sprintf("%sJuly", year))
-		appendDV("cg_piap_indicator_projections_target_y1", period, row.Target_Y1, "", &dvs, deMapping, ouMapping, getComboUID)
-		//}
+	if cfg.PBS.SendAnnualTargets {
+		if row.Target_Y1 != "" {
+			// targetY1, err := strconv.ParseFloat(row.Target_Y1, 64)
+			//if err != nil {
+			//	return nil, err
+			//}
+			//if targetY1 != 0 {
+			year := strings.Split(row.Fiscal_Year, "-")[0]
+			period := strings.TrimSpace(fmt.Sprintf("%sJuly", year))
+			appendDV("cg_piap_indicator_projections_target_y1", period, row.Target_Y1, "", &dvs, deMapping, ouMapping, getComboUID)
+			//}
+		}
 	}
+
 	log.WithFields(log.Fields{"DATAVALUES": dvs}).Debug("The data values to push")
 
-	return dvs, nil
+	return dvs, metadataForDataSet(deMapping.DataSet), nil
 }
 
 // deriveQuarterPeriod converts a fiscal year like "2025-2026" and "Q1"
