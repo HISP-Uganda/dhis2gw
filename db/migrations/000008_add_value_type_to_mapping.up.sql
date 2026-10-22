@@ -1,0 +1,2 @@
+ALTER TABLE dhis2_mappings
+    ADD COLUMN IF NOT EXISTS value_type TEXT NOT NULL DEFAULT '';

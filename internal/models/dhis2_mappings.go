@@ -34,6 +34,7 @@ type Dhis2Mapping struct {
 	SourceName          string    `json:"sourceName,omitempty" db:"source_name"`
 	SourceOrgUnit       string    `json:"sourceOrgUnit,omitempty" db:"source_orgunit"`
 	DestinationOrgUnit  string    `json:"destinationOrgUnit,omitempty" db:"dest_orgunit"`
+	ValueType           string    `json:"valueType,omitempty" db:"value_type"`
 	DimensionType       string    `json:"dimensionType,omitempty" db:"dimension_type"`
 	Created             time.Time `json:"created,omitempty" db:"created"`
 	Updated             time.Time `json:"updated,omitempty" db:"updated"`
@@ -75,10 +76,10 @@ type MappingsFilter struct {
 const insertDhis2MappingSQL = `
 INSERT INTO dhis2_mappings(code, what, name, description, dataset, dataelement, 
     category_option_combo, category_option, category_combo, instance_name, source_name, source_orgunit, 
-	dest_orgunit, created, updated)
+	dest_orgunit, value_type, created, updated)
 VALUES(:code, :what, :name, :description, :dataset, :dataelement, 
     :category_option_combo, :category_option, :category_combo, :instance_name, :source_name, :source_orgunit, 
-	:dest_orgunit, NOW(), NOW()) 
+	:dest_orgunit, :value_type, NOW(), NOW())
 ON CONFLICT ON CONSTRAINT unique_code_source_instance_what
 DO NOTHING 
 RETURNING id`
@@ -104,6 +105,7 @@ func (d *Dhis2Mapping) Update() error {
 	category_option = :category_option, category_combo = :category_combo,
 	instance_name = :instance_name, source_name = :source_name,
 	source_orgunit = :source_orgunit, dest_orgunit = :dest_orgunit,
+	value_type = :value_type,
     updated = NOW() WHERE uid = :uid`, d)
 	if err != nil {
 		log.WithError(err).Error("Failed to update Dhis2Mapping")
@@ -342,6 +344,9 @@ func ParseDhis2MappingCSV(file multipart.File) ([]Dhis2Mapping, error) {
 		if idx, ok := headerMap["dataelement"]; ok {
 			m.DataElement = record[idx]
 		}
+		if idx, ok := headerMap["value_type"]; ok && idx < len(record) {
+			m.ValueType = record[idx]
+		}
 
 		if idx, ok := headerMap["category_option_combo"]; ok && idx < len(record) {
 			if record[idx] != "" {
@@ -408,6 +413,9 @@ func ParseDhis2MappingExcel(file multipart.File) ([]Dhis2Mapping, error) {
 		if idx, ok := headerMap["dataelement"]; ok && idx < len(row) {
 			m.DataElement = row[idx]
 		}
+		if idx, ok := headerMap["value_type"]; ok && idx < len(row) {
+			m.ValueType = row[idx]
+		}
 
 		if idx, ok := headerMap["category_option_combo"]; ok && idx < len(row) {
 			if row[idx] != "" {
@@ -459,7 +467,7 @@ func GenerateDhis2MappingExcel(mappings []Dhis2Mapping) (*excelize.File, error) 
 	headers := []string{
 		"code", "what", "name", "description", "dataset", "dataelement",
 		"category_option_combo", "category_option", "category_combo",
-		"instance_name", "source_name", "source_orgunit", "destination_orgunit",
+		"instance_name", "source_name", "source_orgunit", "destination_orgunit", "value_type",
 	}
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
@@ -471,6 +479,7 @@ func GenerateDhis2MappingExcel(mappings []Dhis2Mapping) (*excelize.File, error) 
 			m.Code, m.What, m.Name, m.Description, m.DataSet, m.DataElement,
 			m.CategoryOptionCombo, m.CategoryOption, m.CategoryCombo,
 			m.InstanceName, m.SourceName, m.SourceOrgUnit, m.DestinationOrgUnit,
+			m.ValueType,
 		}
 		for c, v := range values {
 			cell, _ := excelize.CoordinatesToCellName(c+1, r+2)
@@ -497,7 +506,7 @@ func GenerateDhis2MappingExcelTemplate() (*excelize.File, error) {
 	headers := []string{
 		"code", "what", "name", "description", "dataset", "dataelement",
 		"category_option_combo", "category_option", "category_combo",
-		"instance_name", "source_name", "source_orgunit", "destination_orgunit",
+		"instance_name", "source_name", "source_orgunit", "destination_orgunit", "value_type",
 	}
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)

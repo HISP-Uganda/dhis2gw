@@ -1169,6 +1169,9 @@ const docTemplate = `{
                 "uid": {
                     "type": "string"
                 },
+                "valueType": {
+                    "type": "string"
+                },
                 "updated": {
                     "type": "string"
                 },
