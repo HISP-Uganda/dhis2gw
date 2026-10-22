@@ -17,7 +17,15 @@ func TestCleanPiapProjectionValue(t *testing.T) {
 		{name: "number percentage", value: "50%", valueType: "NUMBER", want: "50"},
 		{name: "number percentage with space", value: "50 % ", valueType: " number ", want: "50"},
 		{name: "number without percentage", value: "50", valueType: "NUMBER", want: "50"},
+		{name: "number strips leading zero", value: "01", valueType: "NUMBER", want: "1"},
+		{name: "number strips leading zeros from zero", value: "00", valueType: "NUMBER", want: "0"},
+		{name: "number strips multiple leading zeros", value: "007", valueType: "NUMBER", want: "7"},
+		{name: "number preserves decimal digits", value: "005.50", valueType: "NUMBER", want: "5.50"},
+		{name: "number preserves sign and exponent", value: "-0007e+2", valueType: "NUMBER", want: "-7e+2"},
+		{name: "number percentage strips leading zeros", value: "007%", valueType: "NUMBER", want: "7"},
+		{name: "number malformed value unchanged", value: "01abc", valueType: "NUMBER", want: "01abc"},
 		{name: "non number preserves percentage", value: "50%", valueType: "TEXT", want: "50%"},
+		{name: "non number preserves leading zero", value: "007", valueType: "TEXT", want: "007"},
 	}
 
 	for _, tt := range tests {

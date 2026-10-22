@@ -535,8 +535,22 @@ func cleanPiapProjectionValue(value, valueType string) string {
 
 	value = strings.TrimSpace(value)
 	value = strings.TrimSuffix(value, "%")
-	return strings.TrimSpace(value)
+	value = strings.TrimSpace(value)
+
+	parts := piapNumberPattern.FindStringSubmatch(value)
+	if len(parts) == 0 {
+		return value
+	}
+
+	integerPart := strings.TrimLeft(parts[2]+parts[3], "0")
+	if integerPart == "" {
+		integerPart = "0"
+	}
+
+	return parts[1] + integerPart + parts[4] + parts[5]
 }
+
+var piapNumberPattern = regexp.MustCompile(`^([+-]?)(0*)([0-9]+)(\.[0-9]+)?([eE][+-]?[0-9]+)?$`)
 
 // deriveQuarterPeriod converts a fiscal year like "2025-2026" and "Q1"
 // into the correct DHIS2 period, assuming fiscal year starts in July.
