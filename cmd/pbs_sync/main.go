@@ -497,7 +497,9 @@ func BuildPiapIndicatorProjectionsDataValues(
 	for _, q := range quarters {
 		period := deriveQuarterPeriod(row.Fiscal_Year, q.qName)
 		appendDV(
-			"cg_piap_indicator_projections_actual", period, q.actual, q.reasonForVariation, &dvs, deMapping, ouMapping, getComboUID)
+			"cg_piap_indicator_projections_actual", period,
+			cleanPiapProjectionValue(q.actual, deMapping.ValueType), q.reasonForVariation,
+			&dvs, deMapping, ouMapping, getComboUID)
 		//if q.reasonForVariation != "" {
 		//	// we add the reason for variation
 		//}
@@ -514,7 +516,9 @@ func BuildPiapIndicatorProjectionsDataValues(
 			//if targetY1 != 0 {
 			year := strings.Split(row.Fiscal_Year, "-")[0]
 			period := strings.TrimSpace(fmt.Sprintf("%sJuly", year))
-			appendDV("cg_piap_indicator_projections_target_y1", period, row.Target_Y1, "", &dvs, deMapping, ouMapping, getComboUID)
+			appendDV("cg_piap_indicator_projections_target_y1", period,
+				cleanPiapProjectionValue(row.Target_Y1, deMapping.ValueType),
+				"", &dvs, deMapping, ouMapping, getComboUID)
 			//}
 		}
 	}
@@ -522,6 +526,16 @@ func BuildPiapIndicatorProjectionsDataValues(
 	log.WithFields(log.Fields{"DATAVALUES": dvs}).Debug("The data values to push")
 
 	return dvs, metadataForDataSet(deMapping.DataSet), nil
+}
+
+func cleanPiapProjectionValue(value, valueType string) string {
+	if !strings.EqualFold(strings.TrimSpace(valueType), "NUMBER") {
+		return value
+	}
+
+	value = strings.TrimSpace(value)
+	value = strings.TrimSuffix(value, "%")
+	return strings.TrimSpace(value)
 }
 
 // deriveQuarterPeriod converts a fiscal year like "2025-2026" and "Q1"

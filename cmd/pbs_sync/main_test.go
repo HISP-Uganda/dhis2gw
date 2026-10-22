@@ -7,6 +7,28 @@ import (
 	"dhis2gw/internal/models"
 )
 
+func TestCleanPiapProjectionValue(t *testing.T) {
+	tests := []struct {
+		name      string
+		value     string
+		valueType string
+		want      string
+	}{
+		{name: "number percentage", value: "50%", valueType: "NUMBER", want: "50"},
+		{name: "number percentage with space", value: "50 % ", valueType: " number ", want: "50"},
+		{name: "number without percentage", value: "50", valueType: "NUMBER", want: "50"},
+		{name: "non number preserves percentage", value: "50%", valueType: "TEXT", want: "50%"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := cleanPiapProjectionValue(tt.value, tt.valueType); got != tt.want {
+				t.Fatalf("cleanPiapProjectionValue(%q, %q) = %q, want %q", tt.value, tt.valueType, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestAppendDVAttachesCommentToValue(t *testing.T) {
 	deMapping := &models.Dhis2Mapping{DataElement: "de-uid"}
 	combo := config.DHIS2CategoryOptionCombo{

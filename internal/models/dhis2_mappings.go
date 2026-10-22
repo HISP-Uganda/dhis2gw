@@ -36,8 +36,8 @@ type Dhis2Mapping struct {
 	DestinationOrgUnit  string    `json:"destinationOrgUnit,omitempty" db:"dest_orgunit"`
 	ValueType           string    `json:"valueType,omitempty" db:"value_type"`
 	DimensionType       string    `json:"dimensionType,omitempty" db:"dimension_type"`
-	Created             time.Time `json:"created,omitempty" db:"created"`
-	Updated             time.Time `json:"updated,omitempty" db:"updated"`
+	Created             time.Time `json:"created" db:"created"`
+	Updated             time.Time `json:"updated" db:"updated"`
 }
 
 type Dhis2MappingDimension struct {
