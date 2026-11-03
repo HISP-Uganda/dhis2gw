@@ -1,12 +1,24 @@
 # Linux Debian build
 
-This directory is a self-contained Debian packaging tree. On Ubuntu, install
-`devscripts`, `debhelper`, `fakeroot`, and `ca-certificates`. From the
-repository root, first generate the Linux/amd64 and Linux/arm64 binaries and
-Debian source trees with:
+This directory is a self-contained Debian packaging tree. The supported build
+host is Ubuntu 24.04 LTS (Noble). Install the packaging tools and the Go
+toolchain used by the repository before building:
 
-The release targets require GoReleaser 2.5.1 or newer. Verify the installed
-version with `goreleaser --version` before building.
+```bash
+sudo apt update
+sudo apt install devscripts debhelper fakeroot ca-certificates
+```
+
+The repository requires Go 1.24.3 or newer. GoReleaser 2.5.1 or newer is also
+required. Verify both tools before building:
+
+```bash
+go version
+goreleaser --version
+```
+
+From the repository root, generate the Linux/amd64 and Linux/arm64 binaries
+and Debian source trees with:
 
 ```bash
 make linux-build
@@ -21,7 +33,10 @@ debuild -us -uc
 ```
 
 The package contains the GoReleaser-built API, worker, PBS Sync, and migration
-binaries. It does not automatically start services or run database migrations.
+binaries. Debian debhelper installs the service units using Ubuntu's merged-
+`/usr` systemd layout; do not add a hard-coded systemd executable path to the
+package. The package does not automatically start services or run database
+migrations.
 Review and edit
 `/etc/dhis2gw/dhis2gw.yml` after installation, then run:
 

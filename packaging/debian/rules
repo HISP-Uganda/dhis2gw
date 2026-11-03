@@ -2,6 +2,10 @@
 
 export DH_VERBOSE = 1
 export CGO_ENABLED = 0
+
+# dh_installsystemd is part of the normal compat 13 sequence. Let debhelper
+# choose Ubuntu's merged-/usr systemd unit directory instead of hard-coding
+# /lib/systemd or /usr/lib/systemd paths in the package.
 %:
 	dh $@
 
