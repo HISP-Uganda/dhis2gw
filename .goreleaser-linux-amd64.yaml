@@ -1,0 +1,51 @@
+version: 2
+project_name: dhis2gw
+
+builds:
+  - id: api
+    main: ./cmd/api
+    binary: dhis2gw
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+  - id: pbs-sync
+    main: ./cmd/pbs_sync
+    binary: pbs-sync
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+  - id: worker
+    main: ./cmd/worker
+    binary: worker
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+  - id: migrate
+    main: ./cmd/migrate
+    binary: migrate
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - amd64

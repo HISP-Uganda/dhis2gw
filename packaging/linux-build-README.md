@@ -17,18 +17,17 @@ go version
 goreleaser --version
 ```
 
-From the repository root, generate the Linux/amd64 and Linux/arm64 binaries
-and Debian source trees with:
+From the repository root, generate the Linux/amd64 binaries and Debian source
+tree with:
 
 ```bash
 make linux-build
 ```
 
-The target creates two self-contained trees. Use the tree matching the Linux
-host architecture:
+The target creates one self-contained Linux/amd64 tree:
 
 ```bash
-cd linux-build/amd64  # use linux-build/arm64 on an arm64 host
+cd linux-build/amd64
 debuild -us -uc
 ```
 

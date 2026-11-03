@@ -5,7 +5,9 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 STAGE="$ROOT/linux-build"
 VERSION=${DHIS2GW_VERSION:-1.0.0}
 
-goreleaser release --snapshot --clean
+goreleaser build \
+	--config "$ROOT/.goreleaser-linux-amd64.yaml" \
+	--snapshot --clean
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
@@ -54,6 +56,5 @@ stage_architecture() {
 }
 
 stage_architecture amd64
-stage_architecture arm64
 
 printf '%s\n' "Linux Debian build trees created at $STAGE (version $VERSION)"
