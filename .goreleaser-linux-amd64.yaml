@@ -26,6 +26,18 @@ builds:
     goarch:
       - amd64
 
+  - id: ibp
+    main: ./cmd/ibp
+    binary: ibp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - "-s -w"
+    goos:
+      - linux
+    goarch:
+      - amd64
+
   - id: worker
     main: ./cmd/worker
     binary: worker

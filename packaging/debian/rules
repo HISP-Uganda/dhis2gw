@@ -10,7 +10,7 @@ export CGO_ENABLED = 0
 	dh $@
 
 override_dh_auto_build:
-	for binary in build/dhis2gw build/dhis2gw-worker build/dhis2gw-pbs-sync build/dhis2gw-migrate; do \
+	for binary in build/dhis2gw build/dhis2gw-worker build/dhis2gw-pbs-sync build/dhis2gw-ibp build/dhis2gw-migrate; do \
 		test -x "$$binary" || { echo "missing executable: $$binary" >&2; exit 1; }; \
 	done
 

@@ -52,6 +52,7 @@ stage_architecture() {
 	copy_release_binary "$arch" dhis2gw dhis2gw "$tree"
 	copy_release_binary "$arch" worker dhis2gw-worker "$tree"
 	copy_release_binary "$arch" pbs-sync dhis2gw-pbs-sync "$tree"
+	copy_release_binary "$arch" ibp dhis2gw-ibp "$tree"
 	copy_release_binary "$arch" migrate dhis2gw-migrate "$tree"
 }
 

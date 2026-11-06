@@ -1,6 +1,7 @@
 build/dhis2gw usr/bin
 build/dhis2gw-worker usr/bin
 build/dhis2gw-pbs-sync usr/bin
+build/dhis2gw-ibp usr/bin
 build/dhis2gw-migrate usr/bin
 packaging/dhis2gw.yml etc/dhis2gw
 docs/templates usr/share/dhis2gw/docs

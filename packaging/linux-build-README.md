@@ -31,7 +31,7 @@ cd linux-build/amd64
 debuild -us -uc
 ```
 
-The package contains the GoReleaser-built API, worker, PBS Sync, and migration
+The package contains the GoReleaser-built API, worker, PBS Sync, IBP Sync, and migration
 binaries. Debian debhelper installs the service units using Ubuntu's merged-
 `/usr` systemd layout; do not add a hard-coded systemd executable path to the
 package. The package does not automatically start services or run database
@@ -43,7 +43,12 @@ Review and edit
 sudo dhis2gw-migrate --config-file /etc/dhis2gw/dhis2gw.yml
 sudo systemctl enable --now dhis2gw.service dhis2gw-worker.service
 sudo systemctl enable --now dhis2gw-pbs-sync.service  # when PBS is configured
+sudo systemctl enable --now dhis2gw-ibp.service       # when IBP is configured
 ```
+
+Before starting IBP Sync, provide its configuration at
+`/etc/dhis2gw/conf.d/ibp.yaml`. The API, worker, PBS Sync, and IBP Sync units
+are installed disabled and stopped so they can be configured before activation.
 
 The Nginx site is installed at
 `/etc/nginx/sites-available/nginx-dhis2gw.conf`. Enable it after reviewing

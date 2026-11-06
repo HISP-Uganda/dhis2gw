@@ -1,0 +1,20 @@
+[Unit]
+Description=DHIS2 Gateway IBP Synchronization
+Wants=network-online.target
+After=network-online.target postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=dhis2gw
+Group=dhis2gw
+WorkingDirectory=/var/lib/dhis2gw
+ExecStart=/usr/bin/dhis2gw-ibp
+Restart=on-failure
+RestartSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dhis2gw /var/log/dhis2gw
+
+[Install]
+WantedBy=multi-user.target
