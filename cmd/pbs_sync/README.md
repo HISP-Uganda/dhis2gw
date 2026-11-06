@@ -40,7 +40,8 @@ The tool relies on the global application configuration. Key PBS settings includ
 | `pbs.password` | `PBS_PASSWORD` | Password for PBS authentication. |
 | `pbs.ipaddress` | `PBS_IPADDRESS` | Optional IP address sent during PBS login. |
 | `pbs.jwt` | `PBS_JWT` | Static JWT used instead of username/password authentication. |
-| `pbs.fiscal_year` | `PBS_FISCAL_YEAR` | The target fiscal year to fetch (e.g., "2025-2026"). |
+| `pbs.fiscal_year` | `PBS_FISCAL_YEAR` | The fiscal year to fetch when override mode is enabled (e.g., "2025-2026"). |
+| `pbs.fiscal_year_override` | `PBS_FISCAL_YEAR_OVERRIDE` | If `true`, use `pbs.fiscal_year`; otherwise calculate the active July–June fiscal year automatically. |
 | `pbs.instance_name` | N/A | Source instance name used when resolving DHIS2 mappings. |
 | `pbs.default_category_option_combo` | `PBS_DEFAULT_CATEGORY_OPTION_COMBO` | Default DHIS2 category option combo UID used when no specific mapping exists. |
 | `pbs.sync.once` | `PBSSYNC_ONCE` | If `true`, runs once and exits. If `false`, runs periodically. |
@@ -79,6 +80,7 @@ pbs:
   ipaddress: ""
   jwt: ""
   fiscal_year: "2024-2025"
+  fiscal_year_override: false
   instance_name: pbs
   default_category_option_combo: "<dhis2-coc-uid>"
 
@@ -143,13 +145,13 @@ go run cmd/pbs_sync/main.go --config-file /path/to/your/dhis2gw.yml
 
 **Method 2: Using Environment Variables (One-off Run)**
 
-This example runs a single synchronisation for the fiscal year 2024-2025 and then exits.
+This example runs a single synchronisation using the automatic July–June fiscal year and then exits.
 
 ```bash
 export PBS_URL="https://api.pbs.go.ug/graphql"
 export PBS_USER="admin"
 export PBS_PASSWORD="secure_password"
-export PBS_FISCAL_YEAR="2024-2025"
+export PBS_FISCAL_YEAR_OVERRIDE="false"
 export PBSSYNC_ONCE="true"
 export PBSSYNC_CACHE_ENABLED="true"
 

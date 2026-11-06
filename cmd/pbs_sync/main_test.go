@@ -2,10 +2,60 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"dhis2gw/internal/config"
 	"dhis2gw/internal/models"
 )
+
+func TestResolveFiscalYearAutomaticallyUsesJulyToJuneCycle(t *testing.T) {
+	cfg := config.Config{}
+	tests := []struct {
+		name string
+		now  time.Time
+		want string
+	}{
+		{name: "july", now: time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC), want: "2026-2027"},
+		{name: "december", now: time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC), want: "2026-2027"},
+		{name: "january", now: time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC), want: "2025-2026"},
+		{name: "june", now: time.Date(2026, time.June, 30, 0, 0, 0, 0, time.UTC), want: "2025-2026"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := resolveFiscalYear(cfg, tt.now)
+			if err != nil {
+				t.Fatalf("resolveFiscalYear() error = %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("resolveFiscalYear() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveFiscalYearOverride(t *testing.T) {
+	cfg := config.Config{}
+	cfg.PBS.FiscalYearOverride = true
+	cfg.PBS.FiscalYear = " 2024-2025 "
+
+	got, err := resolveFiscalYear(cfg, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("resolveFiscalYear() error = %v", err)
+	}
+	if got != "2024-2025" {
+		t.Fatalf("resolveFiscalYear() = %q, want %q", got, "2024-2025")
+	}
+}
+
+func TestResolveFiscalYearOverrideRequiresValue(t *testing.T) {
+	cfg := config.Config{}
+	cfg.PBS.FiscalYearOverride = true
+
+	if _, err := resolveFiscalYear(cfg, time.Now()); err == nil {
+		t.Fatal("resolveFiscalYear() error = nil, want missing override value error")
+	}
+}
 
 func TestCleanPiapProjectionValue(t *testing.T) {
 	tests := []struct {

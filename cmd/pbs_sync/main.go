@@ -52,6 +52,11 @@ func run() error {
 	}
 	config.Set(runtimeCfg)
 	cfg := runtimeCfg.Config
+	if cfg.PBS.FiscalYearOverride {
+		if _, err := resolveFiscalYear(cfg, time.Now()); err != nil {
+			return err
+		}
+	}
 
 	if _, err := db.Init(); err != nil {
 		return fmt.Errorf("failed to initialize database: %w", err)
@@ -77,7 +82,6 @@ func run() error {
 	}
 
 	baseURL := cfg.PBS.PBSURL
-	fy := cfg.PBS.FiscalYear
 	interval := cfg.PBS.Sync.Interval
 	once := cfg.PBS.Sync.Once
 
@@ -126,6 +130,11 @@ func run() error {
 		runCtx, cancelRun := context.WithTimeout(rootCtx, 10*time.Minute)
 		defer cancelRun()
 
+		fy, err := resolveFiscalYear(cfg, time.Now())
+		if err != nil {
+			return err
+		}
+		log.Infof("pbs-sync: using fiscal year %s", fy)
 		if err := fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy); err != nil {
 			if errors.Is(err, context.Canceled) {
 				return context.Canceled
@@ -147,8 +156,14 @@ func run() error {
 		case <-ticker.C:
 		}
 		log.Println("pbs-sync: fetching piap indicator projections...")
+		fy, err := resolveFiscalYear(cfg, time.Now())
+		if err != nil {
+			log.Printf("pbs-sync: fiscal year error: %v", err)
+			continue
+		}
+		log.Infof("pbs-sync: using fiscal year %s", fy)
 		runCtx, cancelRun := context.WithTimeout(rootCtx, 10*time.Minute)
-		err := fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy)
+		err = fetchPiapIndicatorProjectionsByFiscalYear(runCtx, cfg, mappingCache, client, fy)
 		cancelRun()
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
@@ -157,6 +172,22 @@ func run() error {
 			log.Printf("pbs-sync: fetch error: %v", err)
 		}
 	}
+}
+
+func resolveFiscalYear(cfg config.Config, now time.Time) (string, error) {
+	if cfg.PBS.FiscalYearOverride {
+		fiscalYear := strings.TrimSpace(cfg.PBS.FiscalYear)
+		if fiscalYear == "" {
+			return "", errors.New("pbs.fiscal_year must be set when pbs.fiscal_year_override is true")
+		}
+		return fiscalYear, nil
+	}
+
+	startYear := now.Year()
+	if now.Month() < time.July {
+		startYear--
+	}
+	return fmt.Sprintf("%d-%d", startYear, startYear+1), nil
 }
 
 func resolveCacheDir(dir string, appName string) (string, error) {
